@@ -1,9 +1,27 @@
+const POLAR_MEASUREMENT_DATA_SERVICE_UUID = "FB005C80-02E7-F387-1CAD-8ACD2D8DF0C8";
+const POLAR_PMD_CONTROL_POINT_UUID = "FB005C81-02E7-F387-1CAD-8ACD2D8DF0C8";
+const POLAR_PMD_DATA_MTU_CHARACTERISTIC_UUID = "FB005C82-02E7-F387-1CAD-8ACD2D8DF0C8";
+const POLAR_UUID1 = 0xFEEE;
+const POLAR_UUID2 = 0xFEFE;
+
 const FLAG = {
     RATE_16_BITS: 0x1,
     CONTACT_DETECTED: 0x2,
     CONTACT_SENSOR_PRESENT: 0x4,
     ENERGY_PRESENT: 0x8,
     RR_INTERVAL_PRESENT: 0x10
+};
+
+const CONTROL_POINT_FEATURE_READ_RESPONSE = 0x0F;
+const CONTROL_POINT_RESPONSE = 0xF0;
+
+const PMD_FLAG = {
+    ECG_SUPPORTED: 0x1,
+    PPG_SUPPORTED: 0x2,
+    ACC_SUPPORTED: 0x4,
+    PPI_SUPPORTED: 0x8,
+    GYRO_SUPPORTED: 0x10,
+    MAG_SUPPORTED:  0x20
 };
 
 const BODY_SENSOR_LOCATIONS = {
@@ -50,19 +68,34 @@ function parseHeartRate (data) {
     return result;
 }
 
+function parseFeatureReadResponse (data) {
+
+    let arr = [];
+    for (let i = 0; i < data.byteLength; i += 1) {
+        arr.push(data.getUint8(i));
+    }
+    console.log({arr});
+}
 
 class Sensor {
     constructor (requestedDevicePromise) {
         this.body_sensor_location = null;
         this.heartRateService = null;
         this.heartRateCharacteristic = null;
-        this.handleBodySensorLocationCharacteristic = this.handleBodySensorLocationCharacteristic.bind(this);
-        this.handleHeartRateMeasurementCharacteristic = this.handleHeartRateMeasurementCharacteristic.bind(this);
-        this.heartRateChangedHandler = this.heartRateChangedHandler.bind(this);
-        this.handleBatteryLevelCharacteristic = this.handleBatteryLevelCharacteristic.bind(this);
+
         this.connectHeartRateService = this.connectHeartRateService.bind(this);
         this.connectBatteryService = this.connectBatteryService.bind(this);
         this.connectUserDataService = this.connectUserDataService.bind(this);
+        this.connectPmdService = this.connectPmdService.bind(this);
+
+        this.handleBodySensorLocationCharacteristic = this.handleBodySensorLocationCharacteristic.bind(this);
+        this.handleHeartRateMeasurementCharacteristic = this.handleHeartRateMeasurementCharacteristic.bind(this);
+        this.handleBatteryLevelCharacteristic = this.handleBatteryLevelCharacteristic.bind(this);
+        this.handlePMDControlPoint = this.handlePMDControlPoint.bind(this);
+        this.handlePMDDataMTUCharacteristic = this.handlePMDDataMTUCharacteristic.bind(this);
+
+        this.heartRateChangedHandler = this.heartRateChangedHandler.bind(this);
+
 
         this.rootElement = document.createElement("section");
         this.rootElement.classList.add("sensor");
@@ -81,7 +114,7 @@ class Sensor {
         const heartRateServicePromise = server.getPrimaryService("heart_rate").then(this.connectHeartRateService);
         const batteryService = server.getPrimaryService("battery_service").then(this.connectBatteryService);
         const userDataService = server.getPrimaryService("user_data").then(this.connectUserDataService);
-
+        const pmdService = server.getPrimaryService(POLAR_MEASUREMENT_DATA_SERVICE_UUID.toLowerCase()).then(this.connectPmdService);
         return Promise.all([
             heartRateServicePromise,
             batteryService,
@@ -89,17 +122,47 @@ class Sensor {
         ]);
     }
 
+    connectPmdService (service) {
+        console.log("PMD service!!!");
+        this.pmdService = service;
+        return Promise.all([
+            service.getCharacteristic(POLAR_PMD_CONTROL_POINT_UUID.toLowerCase()).then(this.handlePMDControlPoint),
+            service.getCharacteristic(POLAR_PMD_DATA_MTU_CHARACTERISTIC_UUID.toLowerCase()).then(this.handlePMDDataMTUCharacteristic)
+        ]);
+    }
+
     connectUserDataService (service) {
         console.log("UserDataService!!!");
         this.userDataService = service;
         return Promise.all([
-            service.getCharacteristic("first_name").then(this.handleFirstNameCharacteristic)
+            //service.getCharacteristic("first_name").then(this.handleFirstNameCharacteristic)
         ]);
     }
 
     handleFirstNameCharacteristic (characteristic) {
         return characteristic.readValue()
             .then(firstNameData => this.firstName = firstName.getUint8(0));
+    }
+
+    handlePMDControlPointChange (event) {
+        switch (event.target.value.getUint8(0)) {
+            case CONTROL_POINT_FEATURE_READ_RESPONSE:
+                parseFeatureReadResponse(event.target.value);
+                break;
+            case CONTROL_POINT_RESPONSE:
+                // TODO: parse responses
+                break;
+        }
+    }
+
+    handlePMDControlPoint (controlPoint) {
+        controlPoint.addEventListener("characteristicvaluechanged", this.handlePMDControlPointChange);
+        return controlPoint.readValue()
+            .then(parseFeatureReadResponse);
+    }
+
+    handlePMDDataMTUCharacteristic (characteristic) {
+
     }
 
     connectBatteryService (service) {
@@ -192,3 +255,9 @@ If the heart rate sensor reports the energyExpended field, the web application c
 }
 
 export default Sensor;
+
+export {
+    POLAR_UUID1,
+    POLAR_UUID2,
+    POLAR_MEASUREMENT_DATA_SERVICE_UUID
+};

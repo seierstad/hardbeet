@@ -1,5 +1,5 @@
 import Status from "./status.js";
-import Sensor from "./sensor.js";
+import Sensor, {POLAR_MEASUREMENT_DATA_SERVICE_UUID, POLAR_UUID1, POLAR_UUID2} from "./sensor.js";
 import Midi from "./midi.js";
 
 let sensorsSection = null;
@@ -18,7 +18,7 @@ function getDevice () {
             {namePrefix: "Polar H9"},
             {namePrefix: "Polar H10"}
         ],
-        optionalServices: ["battery_service", "device_information", "user_data"]
+        optionalServices: ["battery_service", "device_information", "user_data", POLAR_UUID1, POLAR_MEASUREMENT_DATA_SERVICE_UUID.toLowerCase()]
     });
 
     let sensor = new Sensor(promise);
