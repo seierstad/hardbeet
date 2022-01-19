@@ -1,37 +1,32 @@
 import Status from "./status.js";
-import Sensor, {POLAR_MEASUREMENT_DATA_SERVICE_UUID, POLAR_UUID1, POLAR_UUID2} from "./sensor.js";
+import Sensor, {mainServiceUUID, optionalServicesUUIDs} from "./sensor.js";
 import Midi from "./midi.js";
 
+let addSensorButton = null;
 let sensorsSection = null;
 let configurationSection = null;
+let midiSection = null;
 let midiAvailable = false;
+let midiConnectButton = null;
 
 let status = null;
 const sensors = [];
 let midi = null;
 
-function getDevice () {
+function addSensor () {
     const promise = navigator.bluetooth.requestDevice({
         filters: [
-            {services: ["heart_rate"]},
-            {services: [0x1802, 0x1803]},
-            {namePrefix: "Polar H9"},
-            {namePrefix: "Polar H10"}
+            {services: [mainServiceUUID]}
         ],
-        optionalServices: ["battery_service", "device_information", "user_data", POLAR_UUID1, POLAR_MEASUREMENT_DATA_SERVICE_UUID.toLowerCase()]
+        optionalServices: optionalServicesUUIDs
     });
 
-    let sensor = new Sensor(promise);
+    let sensor = new Sensor(promise, sensors.length, status);
     sensors.push(sensor);
     sensorsSection.appendChild(sensor.rootElement);
 }
 
-const clickHandler = () => {
-    let clickHere = document.getElementById("click-here");
-    clickHere.parentElement.removeChild(clickHere);
-    document.removeEventListener("click", clickHandler);
-    getDevice();
-
+const midiConnectHandler = (event) => {
     if (midiAvailable) {
         status.log("MIDI is available. Requesting access to MIDI.");
         navigator.requestMIDIAccess({"sysex": true}).then(onMIDISuccess, onMIDIFailure);
@@ -40,7 +35,10 @@ const clickHandler = () => {
 
 const btAvailable = () => {
     status.log("bluetooth is available");
-    document.addEventListener("click", clickHandler);
+    addSensorButton = document.createElement("button");
+    addSensorButton.innerText = "add sensor";
+    addSensorButton.addEventListener("click", addSensor);
+    sensorsSection.appendChild(addSensorButton);
 };
 const unavailableBT = (reason = null) => {
     status.log("bluetooth is not available" + (reason ? (": " + reason) : ""));
@@ -61,13 +59,19 @@ const onMIDISuccess = (midiAccess) => {
 
 const pageLoadHandler = () => {
     status = new Status(document.getElementById("status"));
+    
+
     status.log("testing if bluetooth is available");
     sensorsSection = document.getElementById("sensors");
+    midiSection = document.getElementById("midi");
     configurationSection = document.getElementById("configuration");
 
     if (!navigator.bluetooth || typeof navigator.bluetooth.getAvailability !== "function") {
         unavailableBT();
     } else {
+        navigator.bluetooth.onadvertisementreceived = event => console.log({"event": "onadvertisement", event});
+        navigator.bluetooth.addEventListener("advertisementreceived", event => status.log("bluetooth advertisement received: " + event));
+        navigator.bluetooth.addEventListener("availabilitychanged", event => status.log("bluetooth availability changed: " + event));
 
         navigator.bluetooth.getAvailability().then(
             isAvailable => {isAvailable ? btAvailable() : unavailableBT();},
@@ -82,6 +86,11 @@ const pageLoadHandler = () => {
     } else {
         status.log("MIDI is available.")
         midiAvailable = true;
+        midiConnectButton = document.createElement("button");
+        midiConnectButton.innerText = "connect midi";
+        midiConnectButton.addEventListener("click", midiConnectHandler);
+        midiSection.appendChild(midiConnectButton);
+
     }
 };
 

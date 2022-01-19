@@ -1,4 +1,31 @@
 
 #status {
 	background: #ffc;
+	max-height: 10rem;
+	overflow-y: scroll;
+	overscroll-behavior-y: contain;
+}
+
+#status .log-entry {
+	padding: 0;
+	margin: 0;
+}
+#status .log-entry:last-child {
+	scroll-snap-align: end;
+}
+
+#status header {
+	background: #ffc;
+	padding-right: 1rem;
+}
+
+#status .timestamp {
+	padding-right: 1rem;
+}
+#status .timestamp::after {
+	content: ":";
+}
+
+#status .messages {
+	scroll-snap-align: end;
 }
