@@ -28,6 +28,7 @@ function addSensor () {
             } else {
                 sensor  = new Sensor(device, sensors.length, status);
             }
+            sensor.connect();
             sensors.push(sensor);
             sensorsSection.appendChild(sensor.rootElement);
         },

@@ -30,7 +30,7 @@ function parseFeatureReadResponse (data) {
     const flags = data.getUint8(1);
     result.ecg= !!(flags & PMD_FLAG.ECG_SUPPORTED);
     result.ppg = !!(flags & PMD_FLAG.PPG_SUPPORTED);
-    result.acc = !!(flags & PMD_FLAG.ACC_SUPPORTED);
+    result.acceleration = !!(flags & PMD_FLAG.ACC_SUPPORTED);
     result.ppi = !!(flags & PMD_FLAG.PPI_SUPPORTED);
     result.gyro = !!(flags & PMD_FLAG.GYRO_SUPPORTED);
     result.mag = !!(flags & PMD_FLAG.MAG_SUPPORTED);
@@ -43,7 +43,7 @@ function parseControlPointResponse (data) {
     let i = 0;
     const result = {};
     const datatype = data.getUint8(i++);
-    console.log("parse control point response!!!!");
+
     if (datatype !== CONTROL_POINT_RESPONSE_TYPE.MEASUREMENT_CONTROL) {
         console.log("not control point response?!?");
         return result;
@@ -66,6 +66,18 @@ function parseControlPointResponse (data) {
     const measurementType = {};
     result[MEASUREMENT_NAME[data.getUint8(i++)]] = measurementType;
 
+    const errorCode = data.getUint8(i++);
+    if (POLAR_ERROR_CODES[errorCode] !== "SUCCESS") {
+        result.error = {
+            code: errorCode,
+            message: POLAR_ERROR_CODES[errorCode]
+        };
+    }
+    const moreFrames = data.getUint8(i++);
+    if (!!moreFrames) {
+        result.moreFrames = moreFrames;
+    }
+
     while (i < data.byteLength) {
         const setting = {
             values: []
@@ -84,12 +96,15 @@ function parseControlPointResponse (data) {
             case SETTING_TYPE.CHANNELS:
                 setting.unit = "";
                 break;
+            default:
+                console.log("unknown parameter");
+                break;
 
         }
         measurementType[SETTING_TYPE_NAME[settingCode]] = setting;
         const length = data.getUint8(i++);
 
-        for (let j = i + length; i < j; i += 2) {
+        for (let j = i + length * 2; i < j; i += 2) {
             const key = [data.getUint8(i)];
 
             if (i + 1 < data.byteLength) {

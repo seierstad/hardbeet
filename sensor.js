@@ -64,41 +64,6 @@ function byteArray2String (byteArray) {
 
 
 
-
-function lookupNameFromUUID (uuid, dictionaries) {
-    let name = null;
-
-    dictionaries.forEach(d => {
-        if (d.hasOwnProperty(uuid)) {
-            name = d[uuid];
-        }
-    });
-
-    if (name === null && typeof uuid === "string" && uuid.length === 36) {
-        const shortID = parseInt(uuid.substring(4, 8), 16);
-        dictionaries.forEach(d => {
-            if (d.hasOwnProperty(shortID)) {
-                name = d[shortID];
-            }
-        });
-    }
-
-    return name || uuid.toString();
-}
-
-function getDescriptorName (uuid) {
-    return lookupNameFromUUID(uuid, [GATT_DESCRIPTOR_NAME]);
-}
-
-function getCharacteristicName (uuid) {
-    return lookupNameFromUUID(uuid, [POLAR_NAMES, CHARACTERISTIC_OR_OBJECT_TYPE]);
-}
-
-function getServiceName (uuid) {
-    return lookupNameFromUUID(uuid, [POLAR_NAMES, GATT_SERVICE_NAME]);
-}
-
-
 class Sensor {
     constructor (device, index, logger = console) {
         this.logger = logger;
@@ -110,20 +75,31 @@ class Sensor {
         this.connectHeartRateService = this.connectHeartRateService.bind(this);
         this.connectBatteryService = this.connectBatteryService.bind(this);
         this.connectUserDataService = this.connectUserDataService.bind(this);
-        this.queryService = this.queryService.bind(this);
+
 
         this.handleGATTServerDisconnected = this.handleGATTServerDisconnected.bind(this);
-        this.characteristicNotificationEventHandler = this.characteristicNotificationEventHandler.bind(this);
 
         this.rootElement = document.createElement("section");
         this.rootElement.classList.add("sensor");
 
+        this.serviceDescriptors = [{
+            id: "heart_rate",
+            connectFn: this.connectHeartRateService,
+            errorFn: this.heartRateServiceError
+        }, {
+            id: "battery_service",
+            connectFn: this.connectBatteryService,
+            errorFn: this.batteryServiceError
+        }, {
+            id: "user_data",
+            connectFn: this.connectUserDataService,
+            errorFn: this.userDataServiceError
+        }];
 
         this.device = device;
         this.device.addEventListener("advertisementreceived", event => this.logger.log(`sensor ${this.index}: advertisement received: ${event}`));
         if (typeof this.device.watchAdvertisements === "function") {
-            logger.log(`device ${index}: watching advertisements`);
-            this.device.watchAdvertisements();
+            this.device.watchAdvertisements().then(_ => logger.log(`sensor ${index}: watching advertisements`));
         }
 
         let header = document.createElement("header");
@@ -141,8 +117,10 @@ class Sensor {
         idElement.innerText = device.id;
         idElement.classList.add("sensor-device-id");
         this.headerElement.appendChild(idElement);
+    }
 
-        device.gatt.connect().then(server => this.setupGATTServer(server));
+    connect () {
+        this.device.gatt.connect().then(server => this.setupGATTServer(server));
     }
 
     handleGATTServerDisconnected (event) {
@@ -150,91 +128,14 @@ class Sensor {
         this.logger.log({event});
     }
 
-    queryService (uuid) {
-        return this.server.getPrimaryService(uuid)
-            .then(service => {
-                this.services[service.uuid] = {
-                    service,
-                    characteristics: {}
-                };
-
-                return service.getCharacteristics().then(chars => chars.forEach(char => {
-                    this.services[service.uuid].characteristics[char.uuid] = {characteristic: char, descriptors: {}};
-                    //console.log(getCharacteristicName(char.uuid), char.properties);
-
-                    const promises = [
-                        char.getDescriptors().then(descriptors => descriptors.forEach(descriptor => {
-                            console.log(`sensor ${this.index}: service ${getServiceName(service.uuid)}, ${getCharacteristicName(char.uuid)}: descriptor ${decriptor.uuid}`);
-                        })).catch(error => {
-                            console.log(`sensor ${this.index}: no descriptors found in service ${getServiceName(service.uuid)}, characteristic ${getCharacteristicName(char.uuid)}`)
-                        }),
-                    ];
-
-                    if (char.properties.read) {
-                        this.logger.log(`reading characteristic ${getCharacteristicName(char.uuid)} from service ${getServiceName(service.uuid)}`);
-                        promises.push(
-                            char.readValue()
-                                .then(value => {
-                                    this.services[service.uuid].characteristics[char.uuid].value = value;
-                                    this.services[service.uuid].characteristics[char.uuid].valueString = byteArray2String(value);
-                                    this.services[service.uuid].characteristics[char.uuid].valueBytes = byteArray2Array(value);
-                                })
-                                .catch(err => console.error(`sensor ${this.index} ${getCharacteristicName(char.uuid)} read error: ${err}`))
-                        );
-                    }
-
-                    if (char.properties.notify) {
-                        char.addEventListener("characteristicvaluechanged", this.characteristicNotificationEventHandler);
-
-                        promises.push(
-                            char.startNotifications()
-                                .then(char => {
-                                    console.log(`sensor ${this.index}: notifications started for characteristic ${getCharacteristicName(char.uuid)}`);
-                                })
-                                .catch(err => console.error(`sensor ${this.index}: start notifications failed for characteristic ${getCharacteristicName(char.uuid)}: ${err}`))
-                        );
-                    }
-
-                    return Promise.all(promises).catch(err => console.log(err));
-                }));
-            });
-    }
-
-    characteristicNotificationEventHandler (event) {
-        this.logger.log(
-            `sensor ${this.index}:
-             notification from ${getCharacteristicName(event.target.uuid)} -
-             ${byteArray2Array(event.target.value)} - ${byteArray2String(event.target.value)}`);
-    }
 
     setupGATTServer (server) {
         this.server = server;
-
-        const promises = [];
-        /*
-            mainServiceUUID,
-            ...optionalServicesUUIDs
-        ].map(this.queryService);
-        */
-
         this.server.device.addEventListener("gattserverdisconnected", this.handleGATTServerDisconnected);
 
-        const heartRateServicePromise = server.getPrimaryService("heart_rate").then(this.connectHeartRateService);
-        const batteryService = server.getPrimaryService("battery_service").then(this.connectBatteryService);
-        const userDataService = server.getPrimaryService("user_data")
-            .then(
-                this.connectUserDataService,
-                err => this.logger.log(`${this.index}: no user data service`)
-            );
-        const pmdService = server.getPrimaryService(POLAR_MEASUREMENT_DATA_SERVICE_UUID).then(this.connectPmdService);
+        const servicePromises = this.serviceDescriptors.map(s => server.getPrimaryService(s.id).then(s.connectFn, s.errorFn));
 
-        return Promise.all([
-            ...promises,
-            heartRateServicePromise,
-            batteryService,
-            userDataService,
-            pmdService
-        ]);
+        return Promise.all(servicePromises);
     }
 
 
@@ -243,15 +144,30 @@ class Sensor {
         this.rootElement.appendChild(this.userData.rootElement);
     }
 
+    userDataServiceError (error) {
+        this.logger.log(`${this.index}: user data service error: ${error}`);
+    }
+
+
     connectBatteryService (service) {
         this.batteryService = new BatteryService(service);
         this.rootElement.appendChild(this.batteryService.rootElement);
     }
 
+    batteryServiceError (error) {
+        this.logger.log(`${this.index}: battery service error: ${error}`);
+    }
+
+
     connectHeartRateService (service) {
         this.heartRateService = new HeartRateService(service);
         this.rootElement.appendChild(this.heartRateService.rootElement);
     }
+
+    heartRateServiceError (error) {
+        this.logger.log(`${this.index}: heart rate service error: ${error}`);
+    }
+
 
 
 }

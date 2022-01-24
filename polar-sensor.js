@@ -24,15 +24,18 @@ import {
 } from "./polar-parsers.js";
 
 import Sensor from "./sensor.js";
+import PolarFeature from "./polar-feature.js";
+
 
 
 class PolarSensor extends Sensor {
     constructor (device, index, logger = console) {
         super(device, index, logger);
 
-        this.featureSupport = {};
+        this.features = {};
         this.accProperties = {};
         this.ecgProperties = {};
+        this._featureSupport = {};
         this._streamSettings = {};
 
         this.connectPmdService = this.connectPmdService.bind(this);
@@ -43,27 +46,45 @@ class PolarSensor extends Sensor {
         this.handlePMDDataMTUCharacteristicChanged = this.handlePMDDataMTUCharacteristicChanged.bind(this);
 
         this.testRequestToControlPoint = this.testRequestToControlPoint.bind(this);
-        this.featureSupportElement = null;
+        this.featuresElement = null;
+
+        this.serviceDescriptors.push({
+            id: POLAR_MEASUREMENT_DATA_SERVICE_UUID,
+            connectFn: this.connectPmdService,
+            errorFn: this.pmdServiceError
+        });
     }
 
 
     connectPmdService (service) {
         this.pmdService = service;
         return Promise.all([
-            service.getCharacteristic(POLAR_CHARACTERISTICS.PMD_CONTROL_POINT).then(this.handlePMDControlPoint).catch(this.handlePMDControlPointError),
-            service.getCharacteristic(POLAR_CHARACTERISTICS.PMD_DATA_MTU).then(this.handlePMDDataMTUCharacteristic).catch(this.handlePMDDataMTUCharacteristicError)
+            service.getCharacteristic(POLAR_CHARACTERISTICS.PMD_CONTROL_POINT).then(this.handlePMDControlPoint, this.handlePMDControlPointError),
+            service.getCharacteristic(POLAR_CHARACTERISTICS.PMD_DATA_MTU).then(this.handlePMDDataMTUCharacteristic, this.handlePMDDataMTUCharacteristicError)
         ]);
+    }
+
+    pmdServiceError (error) {
+        this.logger.log(`${this.index}: Polar measurement data service error: ${error}`);
     }
 
 
     handlePMDControlPointChanged (event) {
         switch (event.target.value.getUint8(0)) {
             case CONTROL_POINT_RESPONSE_TYPE.FEATURE_READ:
-                this.support = parseFeatureReadResponse(event.target.value);
+                this.featureSupport = parseFeatureReadResponse(event.target.value);
+                this.getParameters();
                 break;
             case CONTROL_POINT_RESPONSE_TYPE.MEASUREMENT_CONTROL:
-                // TODO: parse responses
-                this.streamSettings = parseControlPointResponse(event.target.value);
+                const {type, ...parsedResponse} = parseControlPointResponse(event.target.value);
+
+                if (type === "parameterMap") {
+                    Object.entries(parsedResponse).forEach(([key, value]) => {
+                        this.features[key] = this.features[key] || {};
+                        this.features[key].parameters = value;
+                        this.updateFeatureUI(key);
+                    });
+                }
                 break;
             default:
                 console.error("unknown control point response");
@@ -107,56 +128,53 @@ class PolarSensor extends Sensor {
         const request = CONTROL_POINT_REQUEST.GET_ACC_STREAM_SETTINGS;
         console.log({request});
 
-        this.pmdControlPoint.service.device.onadvertisementreceived = (event) => {console.log("service device advertisementreceived", event);};
+        /*
         this.pmdControlPoint.oncharacteristicvaluechanged = (event) => {console.log("pmd cp oncharacteristicvaluechange", event);};
         this.pmdControlPoint.addEventListener("characteristicvaluechanged", (event) => console.log("cp value changed", event.target.value))
         this.pmdControlPoint.writeValueWithoutResponse(request).then(_ => {
             console.log('Jubalong!');
         })
         .catch(error => { console.error(error); });
+        */
     }
 
+    getParameters () {
 
-
-    set streamSettings (streamSettings) {
-        this._streamSettings = streamSettings;
-        console.log({streamSettings});
-    }
-
-    get streamSettings () {
-        return this._streamSettings;
-    }
-
-    set support (support) {
-        if (this.featureSupportElement === null) {
-            this.featureSupportElement = document.createElement("div");
-            this.featureSupportElement.classList.add("feature-support");
-            this.rootElement.appendChild(this.featureSupportElement);
-
-            const heading = document.createElement("h3");
-            heading.innerText = "features";
-            this.featureSupportElement.appendChild(heading);
-            const list = document.createElement("ul");
-            this.featureSupportElement.appendChild(list);
+        if (this.featureSupport.ecg) {
+            this.pmdControlPoint.writeValueWithoutResponse(CONTROL_POINT_REQUEST.GET_ECG_STREAM_SETTINGS);
         }
-        this.featureSupport = {
-            ...support
-        };
+        if (this.featureSupport.ppg) {
+            this.pmdControlPoint.writeValueWithoutResponse(CONTROL_POINT_REQUEST.GET_PPG_STREAM_SETTINGS);
+        }
+        if (this.featureSupport.acceleration) {
+            this.pmdControlPoint.writeValueWithoutResponse(CONTROL_POINT_REQUEST.GET_ACC_STREAM_SETTINGS);
+        }
+        if (this.featureSupport.ppi) {
+            this.pmdControlPoint.writeValueWithoutResponse(CONTROL_POINT_REQUEST.GET_PPI_STREAM_SETTINGS);
+        }
+        if (this.featureSupport.gyro) {
+            this.pmdControlPoint.writeValueWithoutResponse(CONTROL_POINT_REQUEST.GET_GYRO_STREAM_SETTINGS);
+        }
+        if (this.featureSupport.mag) {
+            this.pmdControlPoint.writeValueWithoutResponse(CONTROL_POINT_REQUEST.GET_MAG_STREAM_SETTINGS);
+        }
+    }
 
+    getParametersForFeature (feature) {
         const buffer = new ArrayBuffer(2);
         const arr = new Uint8Array(buffer);
         //arr.set([0x01, 0x02]);
         //this.pmdControlPoint.writeValue(arr);
 
         Object.entries(this.featureSupport).map(([a, b]) => {
-            let featureElement = this.featureSupportElement.querySelector(`.feature-${a}`);
+            let featureElement = this.featuresElement.querySelector(`.feature-${a}`);
             if (!featureElement) {
                 featureElement = document.createElement("li");
                 featureElement.classList.add(`feature-${a}`);
                 const featureText = document.createElement("h4");
                 featureText.innerText = a;
                 featureElement.appendChild(featureText);
-                this.featureSupportElement.querySelector("ul").appendChild(featureElement);
+                this.featuresElement.querySelector("ul").appendChild(featureElement);
             }
 
             featureElement.classList.add(b ? "supported" : "not-supported");
@@ -175,6 +193,44 @@ class PolarSensor extends Sensor {
             }
             featureElement.appendChild(featureDetails);
         });
+    }
+
+    updateFeatureUI (feature) {
+        console.log(`TODO: update ${feature}`);
+    }
+
+    set streamSettings (streamSettings) {
+        this._streamSettings = streamSettings;
+        console.log({streamSettings});
+    }
+
+    get streamSettings () {
+        return this._streamSettings;
+    }
+
+    set featureSupport (support) {
+        if (this.featuresElement === null) {
+            this.featuresElement = document.createElement("div");
+            this.featuresElement.classList.add("feature-support");
+            this.rootElement.appendChild(this.featuresElement);
+
+            const heading = document.createElement("h3");
+            heading.innerText = "features";
+            this.featuresElement.appendChild(heading);
+            const list = document.createElement("ul");
+            this.featuresElement.appendChild(list);
+            Object.entries(support).filter(([key, supported]) => !!supported).forEach(([key]) => {
+                this.features[key] = new PolarFeature(key);
+                this.featuresElement.appendChild(this.features[key].rootElement);
+            });
+        }
+        this._featureSupport = {
+            ...support
+        };
+    }
+
+    get featureSupport () {
+        return this._featureSupport;
     }
 
 }
