@@ -1,3 +1,10 @@
+const LOGLEVEL = {
+    DEBUG: 0,
+    INFO: 1,
+    WARN: 2,
+    ERROR: 3
+};
+
 class Status {
     constructor (rootElement) {
         this.rootElement = rootElement;
@@ -6,10 +13,10 @@ class Status {
         this.rootElement.appendChild(this.messageContainer);
     }
 
-    log (message, level = 0) {
+    log (message, level = LOGLEVEL.DEBUG) {
         const logEntryElement = document.createElement("p");
         logEntryElement.classList.add("log-entry");
-        
+
         const timestamp = new Date();
         const timestampElement = document.createElement("time");
         timestampElement.classList.add("timestamp");

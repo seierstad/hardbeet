@@ -29,3 +29,7 @@
 #status .messages {
 	scroll-snap-align: end;
 }
+
+.service {
+	display: inline-block;
+}

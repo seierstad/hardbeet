@@ -1,5 +1,6 @@
 import Status from "./status.js";
 import Sensor, {mainServiceUUID, optionalServicesUUIDs} from "./sensor.js";
+import PolarSensor from "./polar-sensor.js";
 import Midi from "./midi.js";
 
 let addSensorButton = null;
@@ -14,16 +15,26 @@ const sensors = [];
 let midi = null;
 
 function addSensor () {
-    const promise = navigator.bluetooth.requestDevice({
+    navigator.bluetooth.requestDevice({
         filters: [
             {services: [mainServiceUUID]}
         ],
         optionalServices: optionalServicesUUIDs
-    });
-
-    let sensor = new Sensor(promise, sensors.length, status);
-    sensors.push(sensor);
-    sensorsSection.appendChild(sensor.rootElement);
+    }).then(
+        device => {
+            let sensor;
+            if (device.name.startsWith("Polar")) {
+                sensor = new PolarSensor(device, sensors.length, status);
+            } else {
+                sensor  = new Sensor(device, sensors.length, status);
+            }
+            sensors.push(sensor);
+            sensorsSection.appendChild(sensor.rootElement);
+        },
+        error => {
+            console.error("device request error: " + error)
+        }
+    );
 }
 
 const midiConnectHandler = (event) => {
@@ -59,7 +70,7 @@ const onMIDISuccess = (midiAccess) => {
 
 const pageLoadHandler = () => {
     status = new Status(document.getElementById("status"));
-    
+
 
     status.log("testing if bluetooth is available");
     sensorsSection = document.getElementById("sensors");
