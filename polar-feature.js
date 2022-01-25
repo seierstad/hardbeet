@@ -1,27 +1,114 @@
+import {
+	OP_CODE,
+	MEASUREMENT_NAME
+} from "./polar-codes.js";
+
+import Visualizer from "./visualizer.js";
+import {parameterList2Properties} from "./polar-sensor.js";
+
 class PolarFeature {
-	constructor (name, parameters = {}, state = {}, startFn = () => console.log("start " + name), stopFn = () => console.log("stop " + name)) {
+	constructor (featureCode, commandFn = () => console.log("command " + featureCode), state = {streaming: false}) {
+		this.featureCode = featureCode;
+		this.commandFn = commandFn;
 		this._parameters = {};
-		this.parameters = parameters;
+		this.requestedStreamProperties = [];
+		this.activeStreamProperties = [];
 
 		this._state = {};
 		this.state = state;
+		this.inputs = {};
 
-		this.startFn = startFn;
-		this.stopFn = stopFn;
+		this.submitHandler = this.submitHandler.bind(this);
+
 		this.rootElement = document.createElement("div");
-		const heading = document.createElement("h4");
-		heading.innerText = name;
-		this.rootElement.appendChild(heading);
+		this.form = document.createElement("form");
+		this.fieldset = document.createElement("fieldset");
+
+		const legend = document.createElement("legend");
+		legend.innerText = MEASUREMENT_NAME[featureCode];
+		this.fieldset.appendChild(legend);
 
 		this.startButton = document.createElement("button");
+		this.startButton.name = "operation";
+		this.startButton.type = "submit";
 		this.startButton.innerText = "start";
-		this.stopButton = document.createElement("button");
-		this.stopButton.innerText = "stop";
+		this.startButton.value = OP_CODE.START_MEASUREMENT;
 
-		this.rootElement.appendChild(this.startButton);
-		this.rootElement.appendChild(this.stopButton);
+		this.stopButton = document.createElement("button");
+		this.stopButton.name = "operation";
+		this.stopButton.type = "submit";
+		this.stopButton.innerText = "stop";
+		this.stopButton.value = OP_CODE.STOP_MEASUREMENT;
+
+		this.fieldset.appendChild(this.startButton);
+		this.fieldset.appendChild(this.stopButton);
+		this.form.appendChild(this.fieldset);
+		this.form.addEventListener("submit", this.submitHandler);
+		this.rootElement.appendChild(this.form);
+
+		this.visualizer = new Visualizer();
+		this.rootElement.appendChild(this.visualizer.rootElement);
+
 	}
 
+	submitHandler (event) {
+		event.preventDefault();
+		event.stopPropagation();
+		const parameters = Array.from(new FormData(event.target).entries()).map(([id, value]) => [parseInt(id, 10), parseInt(value, 10)]);
+		const operation = parseInt(event.submitter.value, 10);
+		this.commandFn(parseInt(this.featureCode, 10), operation, parameters);
+
+		if (operation === OP_CODE.START_MEASUREMENT) {
+			this.requestedStreamProperties = [...parameters];
+		}
+	}
+
+	set parameters (parameters) {
+		this._parameters = [...parameters];
+
+		this._parameters.forEach(({name, values, code, unit}) => {
+			const label = document.createElement("label");
+			const labelText = document.createElement("span");
+			labelText.innerText = name;
+			label.appendChild(labelText);
+
+			const input = document.createElement("select");
+			input.name = code;
+			label.appendChild(input);
+			this.fieldset.appendChild(label);
+			values.forEach(({label: optionLabel, value}) => {
+				const optionElement = document.createElement("option");
+				optionElement.value = value;
+				optionElement.innerText = `${optionLabel} ${unit}`;
+				input.appendChild(optionElement);
+			});
+		});
+	}
+
+	set state (state) {
+		this._state = state;
+		if (state.status === "running") {
+			this.activeStreamProperties = [
+				...this.requestedStreamProperties
+			];
+		}
+	}
+
+	set data (data) {
+		this._data = data;
+
+		this.visualizer.appendData(this._data, parameterList2Properties(this.activeStreamProperties));
+	}
+
+	set error (error) {
+		const {
+			operation,
+			status: {
+				message
+			}
+		} = error;
+		alert(`ERROR: ${operation}: ${message}`);
+	}
 
 }
 

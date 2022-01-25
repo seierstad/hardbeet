@@ -28,18 +28,19 @@ function parseFeatureReadResponse (data) {
     }
 
     const flags = data.getUint8(1);
-    result.ecg= !!(flags & PMD_FLAG.ECG_SUPPORTED);
-    result.ppg = !!(flags & PMD_FLAG.PPG_SUPPORTED);
-    result.acceleration = !!(flags & PMD_FLAG.ACC_SUPPORTED);
-    result.ppi = !!(flags & PMD_FLAG.PPI_SUPPORTED);
-    result.gyro = !!(flags & PMD_FLAG.GYRO_SUPPORTED);
-    result.mag = !!(flags & PMD_FLAG.MAG_SUPPORTED);
+    result[MEASUREMENT_TYPE.ECG] = !!(flags & PMD_FLAG.ECG_SUPPORTED);
+    result[MEASUREMENT_TYPE.PPG]  = !!(flags & PMD_FLAG.PPG_SUPPORTED);
+    result[MEASUREMENT_TYPE.ACCELERATION]  = !!(flags & PMD_FLAG.ACC_SUPPORTED);
+    result[MEASUREMENT_TYPE.PP_INTERVAL]  = !!(flags & PMD_FLAG.PPI_SUPPORTED);
+    result[MEASUREMENT_TYPE.GYROSCOPE]  = !!(flags & PMD_FLAG.GYRO_SUPPORTED);
+    result[MEASUREMENT_TYPE.MAGNETOMETER]  = !!(flags & PMD_FLAG.MAG_SUPPORTED);
     return result;
 }
 
 
 
 function parseControlPointResponse (data) {
+
     let i = 0;
     const result = {};
     const datatype = data.getUint8(i++);
@@ -50,76 +51,94 @@ function parseControlPointResponse (data) {
     }
 
     const op_code = data.getUint8(i++);
-    switch (op_code) {
-        case  OP_CODE.GET_MEASUREMENT_SETTINGS:
-            result.type = "parameterMap";
-            break;
-        case  OP_CODE.START_MEASUREMENT:
-            result.type = "startStream";
-            break;
-        case  OP_CODE.STOP_MEASUREMENT:
-            result.type = "stopStream";
-            break;
-    }
+    const measurementCode = data.getUint8(i++);
+
+    result.measurement = {
+        code: measurementCode,
+        name: MEASUREMENT_NAME[measurementCode]
+    };
+
+    const statusCode = data.getUint8(i++);
+
+    result.status = {
+        code: statusCode,
+        message: POLAR_ERROR_CODES[statusCode]
+    };
+    result.error = (POLAR_ERROR_CODES[statusCode] !== "SUCCESS");
 
 
-    const measurementType = {};
-    result[MEASUREMENT_NAME[data.getUint8(i++)]] = measurementType;
-
-    const errorCode = data.getUint8(i++);
-    if (POLAR_ERROR_CODES[errorCode] !== "SUCCESS") {
-        result.error = {
-            code: errorCode,
-            message: POLAR_ERROR_CODES[errorCode]
-        };
-    }
     const moreFrames = data.getUint8(i++);
     if (!!moreFrames) {
         result.moreFrames = moreFrames;
     }
 
+    switch (op_code) {
+        case  OP_CODE.GET_MEASUREMENT_SETTINGS:
+            result.operation = {
+                name: "parameterMap",
+                code: op_code
+            };
+            break;
+        case  OP_CODE.START_MEASUREMENT:
+            result.operation = {
+                name: "startStream",
+                code: op_code
+            };
+            if (i >= data.byteLength - 1) {
+                return result;
+            }
+            break;
+        case OP_CODE.STOP_MEASUREMENT:
+            result.operation = {
+                name: "stopStream",
+                code: op_code
+            };
+            return result;
+            break;
+    }
+
+
+    const parameters = [];
+    result.parameters = parameters;
+
+
     while (i < data.byteLength) {
-        const setting = {
-            values: []
+        const parameterCode = data.getUint8(i++);
+
+        const parameter = {
+            name: SETTING_TYPE_NAME[parameterCode],
+            values: [],
+            code: parameterCode
         };
-        const settingCode = data.getUint8(i++);
-        switch (settingCode) {
+        switch (parameterCode) {
             case SETTING_TYPE.SAMPLE_RATE:
-                setting.unit = "Hz";
+                parameter.unit = "Hz";
                 break;
             case SETTING_TYPE.RESOLUTION:
-                setting.unit = "bits";
+                parameter.unit = "bits";
                 break;
             case SETTING_TYPE.RANGE:
-                setting.unit = "G";
+                parameter.unit = "G";
                 break;
             case SETTING_TYPE.CHANNELS:
-                setting.unit = "";
+                parameter.unit = "";
                 break;
             default:
                 console.log("unknown parameter");
                 break;
 
         }
-        measurementType[SETTING_TYPE_NAME[settingCode]] = setting;
+        parameters.push(parameter);
         const length = data.getUint8(i++);
 
         for (let j = i + length * 2; i < j; i += 2) {
-            const key = [data.getUint8(i)];
-
-            if (i + 1 < data.byteLength) {
-                // number of channels is coded with one byte only
-                key.push(data.getUint8(i + 1));
-            }
-
-            const lookupValue = key.reduce((acc, curr) => acc << 8 | curr);
-            const value = SETTING_VALUES[settingCode][lookupValue];
-            setting.values.push({[value]: key});
+            const value = [data.getUint16(i, true)];
+            const label = SETTING_VALUES[parameterCode][value];
+            parameter.values.push({label, value});
         }
 
     }
 
-    console.log({result});
     return result;
 }
 
@@ -140,10 +159,9 @@ function parseECGData (data, settings = {}) {
         case ECG_FRAMETYPE.RES14:
             const shift = 32 - resolution;
             for ( ; i < data.byteLength; i += 3) {
-                result.push({
-                    [(((data.getUint8(i + 2) << 16) | data.getUint8(i + 1) << 8 | data.getUint8(i)) << shift) >> shift]:
-                    [data.getUint8(i), data.getUint8(i + 1), data.getUint8(i + 2)]
-                });
+                result.push(
+                    [(((data.getUint8(i + 2) << 16) | data.getUint8(i + 1) << 8 | data.getUint8(i)) << shift) >> shift]
+                );
             }
             break;
 
@@ -168,7 +186,8 @@ function parsePPGData (data, settings) {
 
 function parseAccelerationData (data, settings = {}) {
     const {
-        channels = 3
+        channels = 3,
+        resolution = 16
     } = settings;
 
     let i = 0;
@@ -232,15 +251,8 @@ function parseAccelerationData (data, settings = {}) {
 
 function parseMeasurementData (data, measurementSettings) {
     const typeCode = data.getUint8(0);
-    console.log({originallengde: data.byteLength});
     const timeView = new DataView(data.buffer, 1, 8);
     const time = timeView.getBigUint64(0, true);
-    console.log({time, typeCode});
-    const {
-        ecg = {},
-        ppg = {},
-        acceleration = {}
-    } = measurementSettings;
 
     const metadata = {
         type: {
@@ -254,17 +266,17 @@ function parseMeasurementData (data, measurementSettings) {
         case MEASUREMENT_TYPE.ECG:
             return {
                 ...metadata,
-                ...parseECGData(new DataView(data.buffer, 9), ecg)
+                ...parseECGData(new DataView(data.buffer, 9), measurementSettings)
             };
         case MEASUREMENT_TYPE.PPG:
             return {
                 ...metadata,
-                ...parsePPGData(new DataView(data.buffer, 9), ppg)
+                ...parsePPGData(new DataView(data.buffer, 9), measurementSettings)
             };
         case MEASUREMENT_TYPE.ACCELERATION:
             return {
                 ...metadata,
-                ...parseAccelerationData(new DataView(data.buffer, 9), acceleration)
+                ...parseAccelerationData(new DataView(data.buffer, 9), measurementSettings)
             };
     }
 

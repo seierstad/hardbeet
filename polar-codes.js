@@ -91,9 +91,9 @@ const ECG_FRAMETYPE = {
 };
 
 const RESOLUTION = {
-    0x0E00: 14,
-    0x1000: 16,
-    0x1600: 22
+    0x000E: 14,
+    0x0010: 16,
+    0x0016: 22
 };
 
 const RESOLUTION_CODE = {
@@ -103,12 +103,12 @@ const RESOLUTION_CODE = {
 };
 
 const SAMPLE_RATE = {
-    0x1900:  25,
-    0x3200:  50,
-    0x3400:  52,
-    0x6400: 100,
-    0x8200: 130,
-    0xC800: 200
+    0x0019:  25,
+    0x0032:  50,
+    0x0034:  52,
+    0x0064: 100,
+    0x0082: 130,
+    0x00C8: 200
 };
 
 const SAMPLE_RATE_CODE = {
@@ -121,9 +121,9 @@ const SAMPLE_RATE_CODE = {
 }
 
 const RANGE = {
-    0x0200: 2,
-    0x0400: 4,
-    0x0800: 8
+    0x0002: 2,
+    0x0004: 4,
+    0x0008: 8
 };
 
 const RANGE_CODE = {
@@ -194,6 +194,7 @@ export {
     MEASUREMENT_NAME,
     SETTING_TYPE,
     SETTING_TYPE_NAME,
+    SETTING_LENGTH,
     CONTROL_POINT_REQUEST,
     PMD_FLAG,
     POLAR_NAMES,
