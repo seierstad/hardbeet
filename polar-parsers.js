@@ -157,13 +157,20 @@ function parseECGData (data, settings = {}) {
 
     switch (frameType) {
         case ECG_FRAMETYPE.RES14:
-            const shift = 32 - resolution;
+
+        
+            // read 24 bits as 3 unsigned bytes, concatinate, shift to 
+            const shift = 30 - resolution;
             for ( ; i < data.byteLength; i += 3) {
                 result.push(
+                    //[((data.getUint8(i + 2) << 16) | data.getUint8(i + 1) << 8 | data.getUint8(i))]
+
                     [(((data.getUint8(i + 2) << 16) | data.getUint8(i + 1) << 8 | data.getUint8(i)) << shift) >> shift]
                 );
             }
             break;
+        
+
 
         default:
             console.error("unknown ecg frame type");

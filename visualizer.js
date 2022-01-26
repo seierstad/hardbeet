@@ -3,21 +3,33 @@ class Visualizer {
 		this.index = 0;
 		this.rootElement = document.createElement("div");
 		this.canvas = document.createElement("canvas");
+		this.canvas.classList.add("visualizer");
+		this.ctx = this.canvas.getContext("2d");
 
 		this.rootElement.appendChild(this.canvas);
 		this.drawWaveform = this.drawWaveform.bind(this);
+		this.addToBuffer = this.addToBuffer.bind(this);
 		this.buffer = [];
+		this.animationFrameRequest = null;
+		this.previousValue = null;
+		this.pixelsPrSample = 3;
+		this.resolution = 14;
 	}
 
-	drawWaveform = (canvas, data) => {
-		const ctx = canvas.getContext("2d");
-		canvas.width = canvas.clientWidth;
-		canvas.height = canvas.clientHeight;
-		ctx.clearRect(this.index, 0, data.length, canvas.clientHeight);
-		const channelCount = data[0].length;
-		const width = canvas.clientWidth;
-		const heightPrChannel = canvas.clientHeight / channelCount;
+	drawWaveform = () => {
 
+		const ctx = this.ctx;
+		ctx.strokeStyle = "black";
+		const width = this.canvas.clientWidth;
+		const height = this.canvas.clientHeight;
+		ctx.clearRect(this.index, 0, this.buffer.length * this.pixelsPrSample, height);
+		const clearStart = this.index + this.buffer.length * this.pixelsPrSample - width;
+		if (clearStart > 0) {
+			ctx.clearRect(0, 0, clearStart, height);
+		}
+		const channelCount = this.buffer[0].length;
+/*
+		const heightPrChannel = this.canvas.clientHeight / channelCount;
 
 
 		for (let c = 0; c < channelCount; c += 1) {
@@ -44,15 +56,58 @@ class Visualizer {
 	    		}
 	    	}
     	}
+*/
+		ctx.beginPath();
+		this.previousValue = this.previousValue || height / 2;
+		ctx.moveTo(this.index, this.previousValue);
+
+		const maxValue = 1 << (this.resolution - 1);
+
+		const scale = (value) => (value / maxValue) * height + (height / 2);
+
+		while (this.buffer.length > 0) {
+			const y = this.buffer.shift();
+
+			if (this.index + this.pixelsPrSample >= width) {
+				ctx.stroke();
+				this.index = 0;
+				ctx.beginPath();
+				ctx.moveTo(this.index, this.previousValue);
+			}
+			ctx.lineTo(this.index + this.pixelsPrSample, scale(y[0]));
+			this.previousValue = scale(y[0]);
+			this.index += this.pixelsPrSample;
+		}
+		ctx.stroke();
+
+		/* zero line */
+		ctx.strokeStyle = "red";
+		ctx.beginPath();
+		ctx.moveTo(0, height / 2);
+		ctx.lineTo(width, height / 2);
+		ctx.stroke();
+		/* end zero line */
+
+		this.animationFrameRequest = null;
+	}
+
+	addToBuffer (data) {
+		if (this.previousValue === null) {
+			this.previousValue = data;
+		}
+		if (this.buffer.length === 0) {
+			this.animationFrameRequest = window.requestAnimationFrame(this.drawWaveform);
+		}
+		this.buffer.push(data);
 	}
 
 	appendData (data, parameters) {
 		const {
-			fruquency
+			frequency = 100
 		} = parameters;
-		const interval = 1000 / parameters.frequency;
-		data.forEach((d, index) => setInterval())
-		console.log({data, parameters});
+		const interval = 1000 / frequency;
+
+		data.forEach((d, index) => setTimeout(this.addToBuffer, interval * index, d));
 	}
 }
 
