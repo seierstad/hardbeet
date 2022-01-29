@@ -17,6 +17,12 @@ class Visualizer {
 	}
 
 	drawWaveform = () => {
+		console.log(this.canvas.height, this.canvas.width);
+		if (!this.canvas.height || !this.canvas.width) {
+			this.canvas.width = this.canvas.clientWidth * 4;
+			this.canvas.height = this.canvas.clientHeight;
+			console.log("set height and width");
+		}
 
 		const ctx = this.ctx;
 		ctx.strokeStyle = "black";
@@ -94,6 +100,7 @@ class Visualizer {
 	addToBuffer (data) {
 		if (this.previousValue === null) {
 			this.previousValue = data;
+			this.firstSample = false;
 		}
 		if (this.buffer.length === 0) {
 			this.animationFrameRequest = window.requestAnimationFrame(this.drawWaveform);

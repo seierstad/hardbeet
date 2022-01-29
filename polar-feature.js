@@ -7,7 +7,11 @@ import Visualizer from "./visualizer.js";
 import {parameterList2Properties} from "./polar-sensor.js";
 
 class PolarFeature {
-	constructor (featureCode, commandFn = () => console.log("command " + featureCode), state = {streaming: false}) {
+	constructor (
+		featureCode,
+		commandFn = () => console.log("command " + featureCode),
+		state = {streaming: false}
+	) {
 		this.featureCode = featureCode;
 		this.commandFn = commandFn;
 		this._parameters = {};

@@ -56,8 +56,9 @@ function parseHeartRate (data) {
 
 
 class HeartRateService extends Service {
-    constructor (service) {
+    constructor (service, dataCallbackFn) {
         super(service, "heart rate");
+        this.dataCallbackFn = dataCallbackFn;
         this.heartRateCharacteristic = null;
         this.heartRateHistory = [];
         this.rrHistory = [];
@@ -101,8 +102,10 @@ class HeartRateService extends Service {
         if (parsed.hasOwnProperty("heartRate")) {
             this.heartRate = parsed.heartRate;
             this.heartRateHistory.push([parsed.heartRate, parsed.datetime]);
+            this.dataCallbackFn("heartRate", [parsed.heartRate]);
         }
         if (parsed.hasOwnProperty("rrIntervals")) {
+            this.dataCallbackFn("rrIntervals", parsed.rrIntervals.map(d => [d]));
             this.rrIntervals = parsed.rrIntervals;
             this.rrHistory.push([parsed.rrIntervals, parsed.datetime]);
         }

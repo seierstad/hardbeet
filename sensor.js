@@ -65,10 +65,11 @@ function byteArray2String (byteArray) {
 
 
 class Sensor {
-    constructor (device, index, logger = console) {
+    constructor (device, index, logger = console, dataCallbackFn = (dataType, data, parameters) => logger.log({dataType, data, parameters})) {
         this.logger = logger;
         this.index = index;
 
+        this.dataCallbackFn = dataCallbackFn;
         this.heartRateService = null;
         this.services = {};
 
@@ -160,7 +161,7 @@ class Sensor {
 
 
     connectHeartRateService (service) {
-        this.heartRateService = new HeartRateService(service);
+        this.heartRateService = new HeartRateService(service, this.dataCallbackFn);
         this.rootElement.appendChild(this.heartRateService.rootElement);
     }
 

@@ -39,14 +39,15 @@ const parameterList2Properties = (parameterList) => {
 
 
 class PolarSensor extends Sensor {
-    constructor (device, index, logger = console) {
-        super(device, index, logger);
+    constructor (device, index, logger = console, dataCallbackFn) {
+        super(device, index, logger, dataCallbackFn);
 
         this.features = {};
         this.accProperties = {};
         this.ecgProperties = {};
         this._featureSupport = {};
         this._streamSettings = {};
+        this.dataCallback = {};
 
         this.connectPmdService = this.connectPmdService.bind(this);
         this.featureCommandHandler = this.featureCommandHandler.bind(this);
@@ -155,8 +156,10 @@ class PolarSensor extends Sensor {
         //this.logger.log(`Sensor ${this.index}: PMD data MTU characteristic changed ${event}`);
         //this.parsePMDData(event.target.value, 14, 1); // the values 14 and 1 are specific to ECG data from Polar H10
         const featureCode = event.target.value.getUint8(0);
-        const parsedDataResponse = parseMeasurementData(event.target.value, parameterList2Properties(this.features[featureCode].activeStreamProperties));
+        const properties = parameterList2Properties(this.features[featureCode].activeStreamProperties);
+        const parsedDataResponse = parseMeasurementData(event.target.value, properties);
         this.features[featureCode].data = parsedDataResponse.data;
+        this.dataCallbackFn(MEASUREMENT_NAME[featureCode], parsedDataResponse.data, properties);
     }
 
 
@@ -169,6 +172,11 @@ class PolarSensor extends Sensor {
 
     handlePMDDataMTUCharacteristicError (event) {
         this.logger.log(`Sensor ${this.index} PMD Data characteristic error: ` + error);
+    }
+
+
+    setFeatureDataCallback (feature, func) {
+        this.dataCallback[feature] = func;
     }
 
 

@@ -2,6 +2,7 @@ import Status from "./status.js";
 import Sensor, {mainServiceUUID, optionalServicesUUIDs} from "./sensor.js";
 import PolarSensor from "./polar-sensor.js";
 import Midi from "./midi.js";
+import AudioOutput from "./audio-output.js";
 
 let addSensorButton = null;
 let sensorsSection = null;
@@ -9,10 +10,25 @@ let configurationSection = null;
 let midiSection = null;
 let midiAvailable = false;
 let midiConnectButton = null;
+let audioOutput = null;
 
 let status = null;
 const sensors = [];
-let midi = null;
+const midi = new Midi();
+
+const callbackFunctions = {
+    ecg: [],
+    accelerometer: [],
+    heartRate: []
+};
+
+function dataCallbackFn (dataType, data, parameters) {
+    const {
+      [dataType]: typeFunctions = []
+    } = callbackFunctions;
+
+    typeFunctions.forEach(fn => fn(data, parameters));
+}
 
 function addSensor () {
     navigator.bluetooth.requestDevice({
@@ -24,9 +40,9 @@ function addSensor () {
         device => {
             let sensor;
             if (device.name.startsWith("Polar")) {
-                sensor = new PolarSensor(device, sensors.length, status);
+                sensor = new PolarSensor(device, sensors.length, status, dataCallbackFn);
             } else {
-                sensor  = new Sensor(device, sensors.length, status);
+                sensor  = new Sensor(device, sensors.length, status, dataCallbackFn);
             }
             sensor.connect();
             sensors.push(sensor);
@@ -37,13 +53,6 @@ function addSensor () {
         }
     );
 }
-
-const midiConnectHandler = (event) => {
-    if (midiAvailable) {
-        status.log("MIDI is available. Requesting access to MIDI.");
-        navigator.requestMIDIAccess({"sysex": true}).then(onMIDISuccess, onMIDIFailure);
-    }
-};
 
 const btAvailable = () => {
     status.log("bluetooth is available");
@@ -56,22 +65,13 @@ const unavailableBT = (reason = null) => {
     status.log("bluetooth is not available" + (reason ? (": " + reason) : ""));
 };
 
-const unavailableMIDI = () => {
-    status.log("MIDI is not available");
-};
-
-const onMIDIFailure = (message) => {
-    status.log("Failed to get MIDI access: " + message);
-};
-
-const onMIDISuccess = (midiAccess) => {
-    status.log("MIDI ready!");
-    midi = new Midi(midiAccess);
-};
 
 const pageLoadHandler = () => {
     status = new Status(document.getElementById("status"));
 
+    audioOutput = new AudioOutput();
+    callbackFunctions.ecg.push(audioOutput.addModulationData);
+    document.body.appendChild(audioOutput.rootElement);
 
     status.log("testing if bluetooth is available");
     sensorsSection = document.getElementById("sensors");
@@ -96,13 +96,8 @@ const pageLoadHandler = () => {
     if (!navigator.requestMIDIAccess) {
         unavailableMIDI();
     } else {
-        status.log("MIDI is available.")
+        status.log("MIDI is available.");
         midiAvailable = true;
-        midiConnectButton = document.createElement("button");
-        midiConnectButton.innerText = "connect midi";
-        midiConnectButton.addEventListener("click", midiConnectHandler);
-        midiSection.appendChild(midiConnectButton);
-
     }
 };
 
