@@ -144,7 +144,13 @@ class PolarSensor extends Sensor {
         this.pmdControlPoint = controlPoint;
         controlPoint.addEventListener("characteristicvaluechanged", this.handlePMDControlPointChanged);
 
-        return controlPoint.startNotifications().then(controlPoint => controlPoint.readValue()).then(parseFeatureReadResponse);
+        if (controlPoint.properties.notify) {
+            controlPoint.startNotifications();
+        }
+        return controlPoint.readValue().then(
+                parseFeatureReadResponse,
+                error => console.error("error when parsing control point initial response: " + error)
+            );
     }
 
 
@@ -165,8 +171,7 @@ class PolarSensor extends Sensor {
 
     handlePMDDataMTUCharacteristic (characteristic) {
         console.log("legger til datakildehåndtering");
-        characteristic.startNotifications();
-        characteristic.addEventListener("characteristicvaluechanged", this.handlePMDDataMTUCharacteristicChanged);
+        characteristic.startNotifications().then(characteristic => characteristic.addEventListener("characteristicvaluechanged", this.handlePMDDataMTUCharacteristicChanged));
     }
 
 

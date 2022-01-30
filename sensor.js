@@ -100,7 +100,7 @@ class Sensor {
         this.device = device;
         this.device.addEventListener("advertisementreceived", event => this.logger.log(`sensor ${this.index}: advertisement received: ${event}`));
         if (typeof this.device.watchAdvertisements === "function") {
-            this.device.watchAdvertisements().then(_ => logger.log(`sensor ${index}: watching advertisements`));
+            this.device.watchAdvertisements().then(_ => logger.log(`sensor ${index}: watching advertisements`), error => console.error("device watchAdvertisements error: " + error));
         }
 
         let header = document.createElement("header");
@@ -121,7 +121,7 @@ class Sensor {
     }
 
     connect () {
-        this.device.gatt.connect().then(server => this.setupGATTServer(server));
+        this.device.gatt.connect().then(server => this.setupGATTServer(server), error => console.log("gatt connection error: " + error));
     }
 
     handleGATTServerDisconnected (event) {
