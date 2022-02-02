@@ -158,18 +158,30 @@ function parseECGData (data, settings = {}) {
     switch (frameType) {
         case ECG_FRAMETYPE.RES14:
 
-        
-            // read 24 bits as 3 unsigned bytes, concatinate, shift to 
-            const shift = 30 - resolution;
+
+            // read 24 bits as 3 unsigned bytes, concatinate, shift to
+            const shift = 32 - resolution;
             for ( ; i < data.byteLength; i += 3) {
+                // concatinate 3 unsigned bytes, convert to 32 bit signed and scale to -1...1
                 result.push(
                     //[((data.getUint8(i + 2) << 16) | data.getUint8(i + 1) << 8 | data.getUint8(i))]
 
-                    [(((data.getUint8(i + 2) << 16) | data.getUint8(i + 1) << 8 | data.getUint8(i)) << shift) >> shift]
+                    [(
+                        (
+                            (
+                                (data.getUint8(i + 2) << 16)
+                                | data.getUint8(i + 1) << 8
+                                | data.getUint8(i)
+                            )
+                            << shift
+                        )
+                        >> shift
+                    ) / (1 << (resolution - 1))
+                    ]
                 );
             }
             break;
-        
+
 
 
         default:
@@ -207,17 +219,17 @@ function parseAccelerationData (data, settings = {}) {
         case ACC_FRAMETYPE.RES8:
             metadata.frameType = "8 bit";
             while (i < data.byteLength - 3) {
-                accumulatedValues[0] = data.getInt8(i++, true);
-                accumulatedValues[1] = data.getInt8(i++, true);
-                accumulatedValues[2] = data.getInt8(i++, true);
+                accumulatedValues[0] = data.getInt8(i++, true) / 128;
+                accumulatedValues[1] = data.getInt8(i++, true) / 128;
+                accumulatedValues[2] = data.getInt8(i++, true) / 128;
                 result.push([...accumulatedValues]);
             }
             break;
         case ACC_FRAMETYPE.RES16:
             for ( ; i < data.byteLength; i += 6) {
-                accumulatedValues[0] = data.getInt16(i, true);
-                accumulatedValues[1] = data.getInt16(i + 2, true);
-                accumulatedValues[2] = data.getInt16(i + 4, true);
+                accumulatedValues[0] = data.getInt16(i, true) / (1 << 15);
+                accumulatedValues[1] = data.getInt16(i + 2, true) / (1 << 15);
+                accumulatedValues[2] = data.getInt16(i + 4, true) / (1 << 15);
                 result.push([...accumulatedValues]);
             }
             break;

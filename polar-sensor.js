@@ -19,7 +19,6 @@ import {
 } from "./polar-codes.js";
 
 import {
-    parseMeasurementData,
     parseFeatureReadResponse,
     parseControlPointResponse
 } from "./polar-parsers.js";
@@ -28,14 +27,7 @@ import Sensor from "./sensor.js";
 import PolarFeature from "./polar-feature.js";
 
 
-const parameterList2Properties = (parameterList) => {
-    return parameterList.reduce((acc, [parameterCode, valueCode]) => {
-        return {
-            ...acc, 
-            [SETTING_TYPE_NAME[parameterCode]]: SETTING_VALUES[parameterCode][valueCode]
-        };
-    }, {});
-};
+
 
 
 class PolarSensor extends Sensor {
@@ -81,7 +73,7 @@ class PolarSensor extends Sensor {
 
 
     handlePMDControlPointChanged (event) {
-
+        console.log({event});
         switch (event.target.value.getUint8(0)) {
 
             case CONTROL_POINT_RESPONSE_TYPE.FEATURE_READ:
@@ -94,9 +86,9 @@ class PolarSensor extends Sensor {
                     operation: {
                         code: opCode,
                         name: opName
-                    }, 
+                    },
                     measurement: {
-                        code: measurementCode, 
+                        code: measurementCode,
                         name
                     },
                     error,
@@ -140,13 +132,13 @@ class PolarSensor extends Sensor {
     }
 
 
-    handlePMDControlPoint (controlPoint) {
+    async handlePMDControlPoint (controlPoint) {
         this.pmdControlPoint = controlPoint;
         controlPoint.addEventListener("characteristicvaluechanged", this.handlePMDControlPointChanged);
 
-        if (controlPoint.properties.notify) {
-            controlPoint.startNotifications();
-        }
+        //if (controlPoint.properties.notify) {
+            await controlPoint.startNotifications();
+        //}
         return controlPoint.readValue().then(
                 parseFeatureReadResponse,
                 error => console.error("error when parsing control point initial response: " + error)
@@ -162,16 +154,16 @@ class PolarSensor extends Sensor {
         //this.logger.log(`Sensor ${this.index}: PMD data MTU characteristic changed ${event}`);
         //this.parsePMDData(event.target.value, 14, 1); // the values 14 and 1 are specific to ECG data from Polar H10
         const featureCode = event.target.value.getUint8(0);
-        const properties = parameterList2Properties(this.features[featureCode].activeStreamProperties);
-        const parsedDataResponse = parseMeasurementData(event.target.value, properties);
-        this.features[featureCode].data = parsedDataResponse.data;
-        this.dataCallbackFn(MEASUREMENT_NAME[featureCode], parsedDataResponse.data, properties);
+        this.features[featureCode].parseData(event.target.value, this.dataCallbackFn);
     }
 
 
     handlePMDDataMTUCharacteristic (characteristic) {
         console.log("legger til datakildehåndtering");
-        characteristic.startNotifications().then(characteristic => characteristic.addEventListener("characteristicvaluechanged", this.handlePMDDataMTUCharacteristicChanged));
+        if (characteristic.properties.notify) {
+            characteristic.startNotifications();
+        }
+        characteristic.addEventListener("characteristicvaluechanged", this.handlePMDDataMTUCharacteristicChanged);
     }
 
 
@@ -185,24 +177,24 @@ class PolarSensor extends Sensor {
     }
 
 
-    getParameters () {
+    async getParameters () {
         if (this.featureSupport[MEASUREMENT_TYPE.ECG]) {
-            this.pmdControlPoint.writeValueWithoutResponse(CONTROL_POINT_REQUEST.GET_ECG_STREAM_SETTINGS);
+            await this.pmdControlPoint.writeValue(CONTROL_POINT_REQUEST.GET_ECG_STREAM_SETTINGS);
         }
         if (this.featureSupport[MEASUREMENT_TYPE.PPG]) {
-            this.pmdControlPoint.writeValueWithoutResponse(CONTROL_POINT_REQUEST.GET_PPG_STREAM_SETTINGS);
+            await this.pmdControlPoint.writeValue(CONTROL_POINT_REQUEST.GET_PPG_STREAM_SETTINGS);
         }
         if (this.featureSupport[MEASUREMENT_TYPE.ACCELERATION]) {
-            this.pmdControlPoint.writeValueWithoutResponse(CONTROL_POINT_REQUEST.GET_ACC_STREAM_SETTINGS);
+            await this.pmdControlPoint.writeValue(CONTROL_POINT_REQUEST.GET_ACC_STREAM_SETTINGS);
         }
         if (this.featureSupport[MEASUREMENT_TYPE.PP_INTERVAL]) {
-            this.pmdControlPoint.writeValueWithoutResponse(CONTROL_POINT_REQUEST.GET_PPI_STREAM_SETTINGS);
+            await this.pmdControlPoint.writeValue(CONTROL_POINT_REQUEST.GET_PPI_STREAM_SETTINGS);
         }
         if (this.featureSupport[MEASUREMENT_TYPE.GYROSCOPE]) {
-            this.pmdControlPoint.writeValueWithoutResponse(CONTROL_POINT_REQUEST.GET_GYRO_STREAM_SETTINGS);
+            await this.pmdControlPoint.writeValue(CONTROL_POINT_REQUEST.GET_GYRO_STREAM_SETTINGS);
         }
         if (this.featureSupport[MEASUREMENT_TYPE.MAGNETOMETER]) {
-            this.pmdControlPoint.writeValueWithoutResponse(CONTROL_POINT_REQUEST.GET_MAG_STREAM_SETTINGS);
+            await this.pmdControlPoint.writeValue(CONTROL_POINT_REQUEST.GET_MAG_STREAM_SETTINGS);
         }
     }
 
@@ -258,7 +250,7 @@ class PolarSensor extends Sensor {
             case OP_CODE.STOP_MEASUREMENT:
                 request = Uint8Array.of(operationCode, featureId);
                 break;
-            default: 
+            default:
                 console.error("unknown operation code: " + operationCode);
         }
 
@@ -310,9 +302,5 @@ class PolarSensor extends Sensor {
 
 }
 
-
-export {
-    parameterList2Properties
-};
 
 export default PolarSensor;

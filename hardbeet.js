@@ -14,7 +14,7 @@ let audioOutput = null;
 
 let status = null;
 const sensors = [];
-const midi = new Midi();
+let midi = null;
 
 const callbackFunctions = {
     ecg: [],
@@ -65,10 +65,13 @@ const unavailableBT = (reason = null) => {
     status.log("bluetooth is not available" + (reason ? (": " + reason) : ""));
 };
 
+const unavailableMIDI = () => {
+    this.logger.log("MIDI is not available");
+};
 
 const pageLoadHandler = () => {
     status = new Status(document.getElementById("status"));
-
+    midi = new Midi();
     audioOutput = new AudioOutput();
     callbackFunctions.ecg.push(audioOutput.addModulationData);
     document.body.appendChild(audioOutput.rootElement);
@@ -98,6 +101,7 @@ const pageLoadHandler = () => {
     } else {
         status.log("MIDI is available.");
         midiAvailable = true;
+        midiSection.appendChild(midi.rootElement);
     }
 };
 

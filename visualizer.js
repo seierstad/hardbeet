@@ -5,19 +5,39 @@ class Visualizer {
 		this.canvas = document.createElement("canvas");
 		this.canvas.classList.add("visualizer");
 		this.ctx = this.canvas.getContext("2d");
-
 		this.rootElement.appendChild(this.canvas);
+
 		this.drawWaveform = this.drawWaveform.bind(this);
 		this.addToBuffer = this.addToBuffer.bind(this);
+		this.resetHandler = this.resetHandler.bind(this);
+
 		this.buffer = [];
 		this.animationFrameRequest = null;
 		this.previousValue = null;
 		this.pixelsPrSample = 3;
-		this.resolution = 14;
+
+		this._max = null;
+		this._min = null;
+		this.maxElement = document.createElement("span");
+		this.minElement = document.createElement("span");
+		this.rootElement.appendChild(this.maxElement);
+		this.rootElement.appendChild(this.minElement);
+
+		this.resetButton = document.createElement("button");
+		this.resetButton.innerText = "reset";
+		this.resetButton.addEventListener("click", this.resetHandler);
+		this.rootElement.appendChild(this.resetButton);
+	}
+
+	resetHandler (event) {
+		this.max = 0;
+		this.min = 0;
+		this.index = 0;
+		this.ctx.clearRect(0, 0, this.canvas.clientWidth, this.canvas.clientHeight);
 	}
 
 	drawWaveform = () => {
-		console.log(this.canvas.height, this.canvas.width);
+		//console.log(this.canvas.height, this.canvas.width);
 		if (!this.canvas.height || !this.canvas.width) {
 			this.canvas.width = this.canvas.clientWidth * 4;
 			this.canvas.height = this.canvas.clientHeight;
@@ -67,9 +87,19 @@ class Visualizer {
 		this.previousValue = this.previousValue || height / 2;
 		ctx.moveTo(this.index, this.previousValue);
 
-		const maxValue = 1 << (this.resolution - 1);
+		const scale = (value) => value * height + (height / 2);
 
-		const scale = (value) => (value / maxValue) * height + (height / 2);
+		const {min, max} = this.buffer.reduce((acc, curr) => ({
+			min: Math.min(curr, acc.min),
+			max: Math.max(curr, acc.max)
+		}), {min: Number.MAX_VALUE, max: Number.MIN_VALUE});
+
+		if (this.max === null || max > this.max) {
+			this.max = max;
+		}
+		if (this.min === null || min < this.min) {
+			this.min = min;
+		}
 
 		while (this.buffer.length > 0) {
 			const y = this.buffer.shift();
@@ -95,6 +125,22 @@ class Visualizer {
 		/* end zero line */
 
 		this.animationFrameRequest = null;
+	}
+
+	get max () {
+		return this._max;
+	}
+	set max (max) {
+		this._max = max;
+		this.maxElement.innerText = `max: ${this._max}`;
+	}
+
+	get min () {
+		return this._min;
+	}
+	set min (min) {
+		this._min = min;
+		this.minElement.innerText = `min: ${this._min}`;
 	}
 
 	addToBuffer (data) {

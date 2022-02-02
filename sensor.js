@@ -121,7 +121,11 @@ class Sensor {
     }
 
     connect () {
-        this.device.gatt.connect().then(server => this.setupGATTServer(server), error => console.log("gatt connection error: " + error));
+        this.device.gatt.connect()
+            .then(
+                server => this.setupGATTServer(server),
+                error => console.log("gatt connection error: " + error)
+            );
     }
 
     handleGATTServerDisconnected (event) {

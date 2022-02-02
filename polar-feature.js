@@ -1,10 +1,28 @@
 import {
 	OP_CODE,
-	MEASUREMENT_NAME
+	MEASUREMENT_NAME,
+	SETTING_TYPE_NAME,
+	SETTING_VALUES
 } from "./polar-codes.js";
 
 import Visualizer from "./visualizer.js";
-import {parameterList2Properties} from "./polar-sensor.js";
+
+import {
+    parseMeasurementData,
+    parseFeatureReadResponse,
+    parseControlPointResponse
+} from "./polar-parsers.js";
+
+
+const parameterList2Properties = (parameterList) => {
+    return parameterList.reduce((acc, [parameterCode, valueCode]) => {
+        return {
+            ...acc,
+            [SETTING_TYPE_NAME[parameterCode]]: SETTING_VALUES[parameterCode][valueCode]
+        };
+    }, {});
+};
+
 
 class PolarFeature {
 	constructor (
@@ -67,6 +85,13 @@ class PolarFeature {
 		}
 	}
 
+	parseData (data, callback) {
+        const properties = parameterList2Properties(this.activeStreamProperties);
+        const parsedDataResponse = parseMeasurementData(data, properties);
+        this.data = parsedDataResponse.data;
+        callback(MEASUREMENT_NAME[this.featureCode], parsedDataResponse.data, properties);
+	}
+
 	set parameters (parameters) {
 		this._parameters = [...parameters];
 
@@ -115,5 +140,10 @@ class PolarFeature {
 	}
 
 }
+
+
+export {
+    parameterList2Properties
+};
 
 export default PolarFeature;
