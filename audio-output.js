@@ -17,7 +17,7 @@ class AudioOutput {
 
 		this.startCarrierHandler = this.startCarrierHandler.bind(this);
 		this.stopCarrierHandler = this.stopCarrierHandler.bind(this);
-		this.initAudio = this.initAudio.bind(this);
+		this.initialize = this.initialize.bind(this);
 		this.addModulationData = this.addModulationData.bind(this);
 
 		this.carrierButton = document.createElement("button");
@@ -28,7 +28,7 @@ class AudioOutput {
 
 	startCarrierHandler (event) {
 		if (this.ctx === null) {
-			this.initAudio();
+			this.initialize();
 		}
 
 		this.carrierOscillator.start();
@@ -54,7 +54,7 @@ class AudioOutput {
 	}
 
 
-	initAudio () {
+	initialize () {
 		this.ctx = new AudioContext();
 		this.previousTimestamp = this.ctx.currentTime;
 
@@ -83,15 +83,11 @@ class AudioOutput {
 
 	set modulatorParameters (parameters = {}) {
 		const {
-			frequency = null,
-			resolution = null
+			frequency = null
 		} = parameters;
 
 		if (frequency) {
 			this._modulatorParameters.frequency = frequency;
-		}
-		if (resolution) {
-			this._modulatorParameters.resolution = resolution;
 		}
 	}
 
@@ -99,10 +95,9 @@ class AudioOutput {
 		return this._modulatorParameters;
 	}
 
-	addModulationData (data, parameters = null) {
+	addModulationData (data, parameters = {}) {
 		const {
-			samplerate = null,
-			resolution = null
+			samplerate = null
 		} = parameters;
 
 		this.previousTimestamp = Math.max(this.previousTimestamp, this.ctx.currentTime);
@@ -110,14 +105,10 @@ class AudioOutput {
 		if (samplerate) {
 			this._modulatorParameters.samplerate = samplerate;
 		}
-		if (resolution) {
-			this._modulatorParameters.resolution = resolution;
-		}
 
 		const duration = data.length / this.modulatorParameters.samplerate;
-		const curve = data.map(([d]) => d / (1 << 12));
 		const deltaTime = 1 / this.modulatorParameters.samplerate;
-		curve.forEach((value, index) => {
+		data.forEach(([value], index) => {
 			this.modulatedGain.gain.linearRampToValueAtTime(value, this.previousTimestamp + deltaTime);
 			this.previousTimestamp += deltaTime;
 		});

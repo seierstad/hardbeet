@@ -287,6 +287,7 @@ class PolarSensor extends Sensor {
 
                     if (!this.features[key]) {
                         this.features[key] = new PolarFeature(key, this.featureCommandHandler);
+                        this.features[key].callback = this.dataCallbackFn;
                         this.featuresElement.appendChild(this.features[key].rootElement);
                     }
                 });

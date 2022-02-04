@@ -22,13 +22,17 @@ const callbackFunctions = {
     heartRate: []
 };
 
+
 function dataCallbackFn (dataType, data, parameters) {
     const {
       [dataType]: typeFunctions = []
     } = callbackFunctions;
 
-    typeFunctions.forEach(fn => fn(data, parameters));
+    for (let fn of typeFunctions) {
+        fn(data, parameters);
+    }
 }
+
 
 function addSensor () {
     navigator.bluetooth.requestDevice({
@@ -69,12 +73,20 @@ const unavailableMIDI = () => {
     this.logger.log("MIDI is not available");
 };
 
+const firstClickHandler = (event) => {
+    audioOutput.initialize();
+    document.body.removeEventListener("click", firstClickHandler);
+};
+
 const pageLoadHandler = () => {
     status = new Status(document.getElementById("status"));
     midi = new Midi();
     audioOutput = new AudioOutput();
-    callbackFunctions.ecg.push(audioOutput.addModulationData);
     document.body.appendChild(audioOutput.rootElement);
+    document.body.addEventListener("click", firstClickHandler);
+    callbackFunctions.ecg.push(audioOutput.addModulationData);
+
+    //callbackFunctions.ecg.push(midi.addModulationData);
 
     status.log("testing if bluetooth is available");
     sensorsSection = document.getElementById("sensors");

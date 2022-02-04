@@ -36,11 +36,15 @@ class PolarFeature {
 		this.requestedStreamProperties = [];
 		this.activeStreamProperties = [];
 
+		this.normalizeFactor = 1;
 		this._state = {};
 		this.state = state;
 		this.inputs = {};
 
 		this.submitHandler = this.submitHandler.bind(this);
+		this.resetHandler = this.resetHandler.bind(this);
+		this.normalize = this.normalize.bind(this);
+		this.normalizeHandler = this.normalizeHandler.bind(this);
 
 		this.rootElement = document.createElement("div");
 		this.form = document.createElement("form");
@@ -71,6 +75,33 @@ class PolarFeature {
 		this.visualizer = new Visualizer();
 		this.rootElement.appendChild(this.visualizer.rootElement);
 
+		this.resetButton = document.createElement("button");
+		this.resetButton.innerText = "reset";
+		this.resetButton.addEventListener("click", this.resetHandler);
+		this.rootElement.appendChild(this.resetButton);
+
+		this.normalizeButton = document.createElement("button");
+		this.normalizeButton.innerText = "normalize";
+		this.normalizeButton.addEventListener("click", this.normalizeHandler);
+		this.rootElement.appendChild(this.normalizeButton);
+
+		this._max = null;
+		this._min = null;
+		this.maxElement = document.createElement("span");
+		this.minElement = document.createElement("span");
+		this.rootElement.appendChild(this.maxElement);
+		this.rootElement.appendChild(this.minElement);
+
+	}
+
+	normalizeHandler (event) {
+		this.normalizeFactor = 1 / this.absoluteMax;
+	}
+
+	resetHandler (event) {
+		this.max = 0;
+		this.min = 0;
+		this.visualizer.reset();
 	}
 
 	submitHandler (event) {
@@ -85,11 +116,22 @@ class PolarFeature {
 		}
 	}
 
+	normalize ([value]) {
+		return [Math.min(Math.max(value * this.normalizeFactor, -1), 1)];
+	}
+
 	parseData (data, callback) {
         const properties = parameterList2Properties(this.activeStreamProperties);
         const parsedDataResponse = parseMeasurementData(data, properties);
         this.data = parsedDataResponse.data;
-        callback(MEASUREMENT_NAME[this.featureCode], parsedDataResponse.data, properties);
+	}
+
+
+	set callback (callbackFn) {
+		this._callback = callbackFn;
+	}
+	get callback () {
+		return this._callback;
 	}
 
 	set parameters (parameters) {
@@ -123,10 +165,51 @@ class PolarFeature {
 		}
 	}
 
+	get absoluteMax () {
+		return Math.max(Math.abs(this.max), Math.abs(this.min));
+	}
+
 	set data (data) {
 		this._data = data;
 
-		this.visualizer.appendData(this._data, parameterList2Properties(this.activeStreamProperties));
+		const {min, max} = this._data.reduce((acc, curr) => ({
+			min: Math.min(curr, acc.min),
+			max: Math.max(curr, acc.max)
+		}), {min: Number.MAX_VALUE, max: Number.MIN_VALUE});
+
+		if (this.max === null || max > this.max) {
+			this.max = max;
+		}
+		if (this.min === null || min < this.min) {
+			this.min = min;
+		}
+
+		if (min  * this.normalizeFactor < -1) {
+			this.minElement.classList.add("clip");
+		}
+		if (max  * this.normalizeFactor > 1) {
+			this.maxElement.classList.add("clip");
+		}
+
+		const properties = parameterList2Properties(this.activeStreamProperties);
+		this.visualizer.appendData(data, properties);
+		this.callback(MEASUREMENT_NAME[this.featureCode], data.map(this.normalize), properties);
+	}
+
+	get max () {
+		return this._max;
+	}
+	set max (max) {
+		this._max = max;
+		this.maxElement.innerText = `max: ${this._max}`;
+	}
+
+	get min () {
+		return this._min;
+	}
+	set min (min) {
+		this._min = min;
+		this.minElement.innerText = `min: ${this._min}`;
 	}
 
 	set error (error) {
