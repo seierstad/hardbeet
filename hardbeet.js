@@ -86,7 +86,7 @@ const pageLoadHandler = () => {
     document.body.addEventListener("click", firstClickHandler);
     callbackFunctions.ecg.push(audioOutput.addModulationData);
 
-    //callbackFunctions.ecg.push(midi.addModulationData);
+    callbackFunctions.ecg.push(midi.addModulationData);
 
     status.log("testing if bluetooth is available");
     sensorsSection = document.getElementById("sensors");

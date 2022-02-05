@@ -14,10 +14,62 @@ class Midi {
         this.inputs = [];
         this.outputs = [];
         this.rootElement = document.createElement("div");
+        this.midiChannel = 0;
+        this._samplerate = null;
+        this.samplerateChanged = false;
+        this.buffer = [];
 
+        this.addModulationData = this.addModulationData.bind(this);
         this.checkboxHandler = this.checkboxHandler.bind(this);
         this.onAccess = this.onAccess.bind(this);
+        this.sendPitch = this.sendPitch.bind(this);
+        this.playBuffer = this.playBuffer.bind(this);
         this.addConnectButton();
+
+        this.interval = null;
+    }
+
+    playBuffer () {
+        if (this.buffer.length > 0) {
+            this.sendPitch(this.buffer.shift());
+        }
+        if (this.samplerateChanged) {
+            clearInterval(this.interval);
+            this.interval = setInterval(this.playBuffer, 1000 / this.samplerate);
+            this.samplerateChanged = false;
+        }
+    }
+
+    set samplerate (samplerate) {
+        if (samplerate !== this._samplerate) {
+            this._samplerate = samplerate;
+            this.samplerateChanged = true;
+
+        }
+        if (this.interval === null) {
+            this.interval = setInterval(this.playBuffer, 1000 / samplerate);
+        }
+    }
+
+    get samplerate () {
+        return this._samplerate;
+    }
+
+    sendPitch (value) {
+        const pitchValue = Math.floor(0x2000 + value * 0x1fff);
+        const mvb = pitchValue >> 7;
+        const lvb = pitchValue & 0x7f;
+        this.outputs.forEach(port => {
+            port.port.send([MESSAGE_TYPE.PITCH_BEND, lvb, mvb]);
+        });
+    }
+
+    addModulationData (data, parameters = {}) {
+        this.buffer.push(...data.map(([value]) => value));
+        const samplerate = (parameters.hasOwnProperty("samplerate")) ? parameters.samplerate : 130;
+        if (this.samplerate !== samplerate) {
+            this.samplerate = samplerate;
+        }
     }
 
     checkboxHandler (event) {
@@ -28,9 +80,14 @@ class Midi {
             } = {}
         } = event;
         const port = this.outputs.find(p => p.port.id === value);
+        const velocity = 127;
+        const note = 65;
         if (port) {
-            console.log({port: port.port});
-            port.port.open().then(p => p.send([0x90, 60, 0x20]));
+            if (checked) {
+                port.port.open().then(p => p.send([MESSAGE_TYPE.NOTE_ON, note, velocity]));
+            } else {
+                port.port.send([MESSAGE_TYPE.NOTE_OFF, note, velocity]);
+            }
         }
     }
 
