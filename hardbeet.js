@@ -70,7 +70,7 @@ const unavailableBT = (reason = null) => {
 };
 
 const unavailableMIDI = () => {
-    this.logger.log("MIDI is not available");
+    status.log("MIDI is not available");
 };
 
 const firstClickHandler = (event) => {
