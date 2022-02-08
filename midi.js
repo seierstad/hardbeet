@@ -4,8 +4,8 @@ import {
     CONTROL
 } from "./midi-constants.js";
 
-import MidiPort from "./midi-port.js";
-
+import MidiInput from "./midi-input.js";
+import MidiOutput from "./midi-output.js";
 
 const MIDI_BLE_SERVICE_UUID = "03b80e5a-ede8-4b33-a751-6ce34ec4c700";
 const MIDI_BLE_CHARACTERISTIC_UUID = "7772e5db-3868-4112-a1a9-f2669d106bf3";
@@ -145,14 +145,14 @@ class Midi {
 
         const outputIterator = access.outputs.entries();
         for (let [, port] of outputIterator) {
-            const p = new MidiPort(port);
+            const p = new MidiOutput(port);
             this.outputs.push(p);
             this.outputsElement.appendChild(p.rootElement);
         }
 
         const inputIterator = access.inputs.entries();
         for (let [, port] of inputIterator) {
-            const p = new MidiPort(port);
+            const p = new MidiInput(port);
             this.inputs.push(p);
             this.inputsElement.appendChild(p.rootElement);
         }
