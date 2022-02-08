@@ -1,3 +1,5 @@
+import Noise from "./noise.js";
+
 class AudioOutput {
 	constructor () {
 		this.ctx = null;
@@ -19,6 +21,7 @@ class AudioOutput {
 		this.stopCarrierHandler = this.stopCarrierHandler.bind(this);
 		this.initialize = this.initialize.bind(this);
 		this.addModulationData = this.addModulationData.bind(this);
+		this.initNoise = this.initNoise.bind(this);
 
 		this.carrierButton = document.createElement("button");
 		this.carrierButton.innerText = "start carrier";
@@ -54,6 +57,11 @@ class AudioOutput {
 	}
 
 
+	initNoise () {
+		this.noise = new Noise(this.ctx);
+		this.noise.connect(this.modulatedGain);
+	}
+
 	initialize () {
 		this.ctx = new AudioContext();
 		this.previousTimestamp = this.ctx.currentTime;
@@ -74,11 +82,13 @@ class AudioOutput {
 			.connect(this.pingGain)
 			.connect(this.masterGain);
 
+
 		this.carrierOscillator
 			.connect(this.modulatedGain)
 			.connect(this.masterGain)
 			.connect(this.ctx.destination);
 
+		this.ctx.audioWorklet.addModule("noise-processor.js").then(() => this.initNoise());
 	}
 
 	set modulatorParameters (parameters = {}) {
