@@ -60,35 +60,40 @@ class AudioOutput {
 	initNoise () {
 		this.noise = new Noise(this.ctx);
 		this.noise.connect(this.modulatedGain);
+		this.rootElement.appendChild(this.noise.rootElement);
 	}
 
 	initialize () {
-		this.ctx = new AudioContext();
-		this.previousTimestamp = this.ctx.currentTime;
+		if (this.ctx === null) {
+			this.ctx = new AudioContext();
+			this.previousTimestamp = this.ctx.currentTime;
 
-		this.masterGain = this.ctx.createGain();
+			this.masterGain = this.ctx.createGain();
 
-		this.modulatedGain = this.ctx.createGain();
-		this.modulatedGain.gain.value = 0;
+			this.modulatedGain = this.ctx.createGain();
+			this.modulatedGain.gain.value = 0;
 
-		this.createCarrier();
+			this.createCarrier();
 
-		this.pingOscillator = this.ctx.createOscillator();
-		this.pingOscillator.start();
-		this.pingGain = this.ctx.createGain();
-		this.pingGain.gain.value = 0;
+			this.pingOscillator = this.ctx.createOscillator();
+			this.pingOscillator.start();
+			this.pingGain = this.ctx.createGain();
+			this.pingGain.gain.value = 0;
 
-		this.pingOscillator
-			.connect(this.pingGain)
-			.connect(this.masterGain);
+			this.pingOscillator
+				.connect(this.pingGain)
+				.connect(this.masterGain);
 
+			this.noiseGain = this.ctx.createGain();
+			this.noiseGain.connect(this.modulatedGain);
 
-		this.carrierOscillator
-			.connect(this.modulatedGain)
-			.connect(this.masterGain)
-			.connect(this.ctx.destination);
+			this.carrierOscillator
+				.connect(this.modulatedGain)
+				.connect(this.masterGain)
+				.connect(this.ctx.destination);
 
-		this.ctx.audioWorklet.addModule("noise-processor.js").then(() => this.initNoise());
+			this.ctx.audioWorklet.addModule("noise-processor.js").then(() => this.initNoise());
+		}
 	}
 
 	set modulatorParameters (parameters = {}) {
@@ -122,7 +127,6 @@ class AudioOutput {
 			this.modulatedGain.gain.linearRampToValueAtTime(value, this.previousTimestamp + deltaTime);
 			this.previousTimestamp += deltaTime;
 		});
-//		this.modulatedGain.gain.setValueCurveAtTime(curve, this.ctx.currentTime, duration);
 	}
 
 	set gain (gain) {
