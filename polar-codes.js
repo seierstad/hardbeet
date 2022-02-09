@@ -1,3 +1,5 @@
+"use strict";
+
 const POLAR_MEASUREMENT_DATA_SERVICE_UUID = "fb005c80-02e7-f387-1cad-8acd2d8df0c8";
 
 const POLAR_UUID1 = 0xFEEE;

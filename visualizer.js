@@ -1,3 +1,5 @@
+"use strict";
+
 class Visualizer {
     constructor () {
         this.index = 0;

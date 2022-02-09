@@ -1,3 +1,5 @@
+"use strict";
+
 //this.characteristicNotificationEventHandler = this.characteristicNotificationEventHandler.bind(this);
 //this.queryService = this.queryService.bind(this);
 

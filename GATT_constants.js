@@ -1,3 +1,5 @@
+"use strict";
+
 const GATT_DECLARATION_NAME = {
     0x2800: "Primary Service",
     0x2801: "Secondary Service",

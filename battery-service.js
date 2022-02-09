@@ -1,3 +1,5 @@
+"use strict";
+
 import Service from "./service.js";
 
 class BatteryService extends Service {

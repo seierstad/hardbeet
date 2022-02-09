@@ -1,3 +1,5 @@
+"use strict";
+
 const LOGLEVEL = {
     DEBUG: 0,
     INFO: 1,

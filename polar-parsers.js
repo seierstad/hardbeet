@@ -1,3 +1,5 @@
+"use strict";
+
 import {
     POLAR_ERROR_CODES,
     MEASUREMENT_TYPE,

@@ -1,3 +1,5 @@
+"use strict";
+
 const PROPRIETARY_UUIDS = {
     0xFCFF: "701x",
     0xFD00: "FUTEK Advanced Sensor Technology, Inc.",

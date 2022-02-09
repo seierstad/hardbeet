@@ -1,3 +1,5 @@
+"use strict";
+
 class MidiPort {
     constructor (port) {
         this.port = port;

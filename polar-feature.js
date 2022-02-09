@@ -1,3 +1,5 @@
+"use strict";
+
 import {
     OP_CODE,
     MEASUREMENT_NAME,

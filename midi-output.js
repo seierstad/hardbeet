@@ -1,3 +1,5 @@
+"use strict";
+
 import MidiPort from "./midi-port.js";
 import {
     SYSEX_TYPE

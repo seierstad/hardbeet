@@ -1,4 +1,4 @@
-
+"use strict";
 
 class Toggle {
     constructor (name, values = [], defaultValue, handler, legend = name) {

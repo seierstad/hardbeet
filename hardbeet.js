@@ -1,3 +1,5 @@
+"use strict";
+
 import Status from "./status.js";
 import Sensor, {mainServiceUUID, optionalServicesUUIDs} from "./sensor.js";
 import PolarSensor from "./polar-sensor.js";

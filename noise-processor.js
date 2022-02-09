@@ -1,3 +1,5 @@
+"use strict";
+
 const trailingZeros = (size) => {
 
     const MASK = (1 << size + 1) - 1;

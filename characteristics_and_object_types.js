@@ -1,3 +1,4 @@
+"use strict";
 
 const CHARACTERISTIC_UUID = {
     "DEVICE_NAME": 0x2A00,

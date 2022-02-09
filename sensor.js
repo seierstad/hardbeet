@@ -1,3 +1,5 @@
+"use strict";
+
 import {
     POLAR_CHARACTERISTICS,
     POLAR_MEASUREMENT_DATA_SERVICE_UUID,

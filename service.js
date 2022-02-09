@@ -1,3 +1,5 @@
+"use strict";
+
 class Service {
     constructor (service, headingText = "service") {
         this.service = service;

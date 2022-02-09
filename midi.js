@@ -1,3 +1,5 @@
+"use strict";
+
 import {
     MESSAGE_TYPE,
     SYSEX_TYPE,
