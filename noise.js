@@ -30,7 +30,6 @@ class Toggle {
 }
 
 
-
 class Noise extends AudioWorkletNode {
     constructor (context) {
         super(context, "noise-processor");
@@ -75,7 +74,7 @@ class Noise extends AudioWorkletNode {
             type,
             message,
             data
-        } = JSON.parse(event.data)
+        } = JSON.parse(event.data);
     }
 
 

@@ -25,7 +25,7 @@ const callbackFunctions = {
 
 function dataCallbackFn (dataType, data, parameters) {
     const {
-      [dataType]: typeFunctions = []
+        [dataType]: typeFunctions = []
     } = callbackFunctions;
 
     for (let fn of typeFunctions) {
@@ -46,14 +46,14 @@ function addSensor () {
             if (device.name.startsWith("Polar")) {
                 sensor = new PolarSensor(device, sensors.length, status, dataCallbackFn);
             } else {
-                sensor  = new Sensor(device, sensors.length, status, dataCallbackFn);
+                sensor = new Sensor(device, sensors.length, status, dataCallbackFn);
             }
             sensor.connect();
             sensors.push(sensor);
             sensorsSection.appendChild(sensor.rootElement);
         },
         error => {
-            console.error("device request error: " + error)
+            console.error("device request error: " + error);
         }
     );
 }
@@ -73,7 +73,7 @@ const unavailableMIDI = () => {
     status.log("MIDI is not available");
 };
 
-const firstClickHandler = (event) => {
+const firstClickHandler = () => {
     audioOutput.initialize();
     document.body.removeEventListener("click", firstClickHandler);
 };
@@ -96,7 +96,7 @@ const pageLoadHandler = () => {
     if (!navigator.bluetooth || typeof navigator.bluetooth.getAvailability !== "function") {
         unavailableBT();
     } else {
-        navigator.bluetooth.onadvertisementreceived = event => console.log({"event": "onadvertisement", event});
+        navigator.bluetooth.onadvertisementreceived = event => console.log({"type": "onadvertisement", event});
         navigator.bluetooth.addEventListener("advertisementreceived", event => status.log("bluetooth advertisement received: " + event));
         navigator.bluetooth.addEventListener("availabilitychanged", event => status.log("bluetooth availability changed: " + event));
 

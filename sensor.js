@@ -48,7 +48,6 @@ const optionalServicesUUIDs = [
 ];
 
 
-
 function byteArray2Array (byteArray) {
     let result = [];
     for (let i = 0; i < byteArray.byteLength; i += 1) {
@@ -60,8 +59,6 @@ function byteArray2Array (byteArray) {
 function byteArray2String (byteArray) {
     return String.fromCharCode(...byteArray2Array(byteArray));
 }
-
-
 
 
 class Sensor {
@@ -172,9 +169,6 @@ class Sensor {
     heartRateServiceError (error) {
         this.logger.log(`${this.index}: heart rate service error: ${error}`);
     }
-
-
-
 }
 
 export default Sensor;

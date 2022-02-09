@@ -27,9 +27,6 @@ import Sensor from "./sensor.js";
 import PolarFeature from "./polar-feature.js";
 
 
-
-
-
 class PolarSensor extends Sensor {
     constructor (device, index, logger = console, dataCallbackFn) {
         super(device, index, logger, dataCallbackFn);
@@ -106,7 +103,7 @@ class PolarSensor extends Sensor {
                         if (!error) {
                             this.features[measurementCode].state = {
                                 status: "running"
-                            }
+                            };
                         } else {
                             this.features[measurementCode].error = {status, operation: opName};
                         }
@@ -117,7 +114,7 @@ class PolarSensor extends Sensor {
                         if (!error) {
                             this.features[measurementCode].state = {
                                 status: "stopped"
-                            }
+                            };
                         } else {
                             this.features[measurementCode].error = {status, operation: opName};
                         }
@@ -137,12 +134,13 @@ class PolarSensor extends Sensor {
         controlPoint.addEventListener("characteristicvaluechanged", this.handlePMDControlPointChanged);
 
         //if (controlPoint.properties.notify) {
-            await controlPoint.startNotifications();
+        await controlPoint.startNotifications();
         //}
+
         return controlPoint.readValue().then(
-                parseFeatureReadResponse,
-                error => console.error("error when parsing control point initial response: " + error)
-            );
+            parseFeatureReadResponse,
+            error => console.error("error when parsing control point initial response: " + error)
+        );
     }
 
 
@@ -167,7 +165,7 @@ class PolarSensor extends Sensor {
     }
 
 
-    handlePMDDataMTUCharacteristicError (event) {
+    handlePMDDataMTUCharacteristicError (error) {
         this.logger.log(`Sensor ${this.index} PMD Data characteristic error: ` + error);
     }
 
@@ -238,11 +236,15 @@ class PolarSensor extends Sensor {
                 request = new ArrayBuffer(2 + (4 * parameters.length));
                 const view = new DataView(request);
                 let i = 0;
-                view.setUint8(i++, operationCode);
-                view.setUint8(i++, featureId);
+                view.setUint8(i, operationCode);
+                i += 1;
+                view.setUint8(i, featureId);
+                i += 1;
                 parameters.forEach(([parameter, value]) => {
-                    view.setUint8(i++, parameter);
-                    view.setUint8(i++, SETTING_LENGTH);
+                    view.setUint8(i, parameter);
+                    i += 1;
+                    view.setUint8(i, SETTING_LENGTH);
+                    i += 1;
                     view.setUint16(i, value, true);
                     i += 2;
                 });

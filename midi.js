@@ -11,7 +11,6 @@ const MIDI_BLE_SERVICE_UUID = "03b80e5a-ede8-4b33-a751-6ce34ec4c700";
 const MIDI_BLE_CHARACTERISTIC_UUID = "7772e5db-3868-4112-a1a9-f2669d106bf3";
 
 
-
 class Midi {
     constructor (logger = console) {
         this.logger = logger;
@@ -96,12 +95,12 @@ class Midi {
         }
     }
 
-    connectHandler = (event) => {
+    connectHandler () {
         this.logger.log("Requesting access to MIDI.");
         navigator.requestMIDIAccess({"sysex": true}).then(this.onAccess, this.onAccessFailure);
     }
 
-    onAccessFailure = (message) => {
+    onAccessFailure (message) {
         this.logger.log("Failed to get MIDI access: " + message);
     }
 
@@ -118,7 +117,7 @@ class Midi {
         this.connectButton.parentNode.removeChild(this.connectButton);
     }
 
-    onAccess = (access) => {
+    onAccess (access) {
         this.removeConnectButton();
         if (!this.inputsElement) {
             const inputs = document.createElement("fieldset");

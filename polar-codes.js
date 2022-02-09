@@ -61,12 +61,12 @@ const CONTROL_POINT_RESPONSE_TYPE = {
 };
 
 const MEASUREMENT_TYPE = {
-    "ECG": 0x00,           // Volt (V)
+    "ECG": 0x00, // Volt (V)
     "PPG": 0x01,
-    "ACCELERATION": 0x02,  // Force per unit mass (g)
-    "PP_INTERVAL": 0x03,   // Second (s)
-    "GYROSCOPE": 0x05,     // Degrees per second (dps)
-    "MAGNETOMETER": 0x06   // Gauss (G)
+    "ACCELERATION": 0x02, // Force per unit mass (g)
+    "PP_INTERVAL": 0x03, // Second (s)
+    "GYROSCOPE": 0x05, // Degrees per second (dps)
+    "MAGNETOMETER": 0x06 // Gauss (G)
     //4, 7-255 Reserved for Future Use
 };
 
@@ -118,7 +118,7 @@ const SAMPLE_RATE_CODE = {
     100: [0x64, 0x00],
     130: [0x82, 0x00],
     200: [0xC8, 0x00]
-}
+};
 
 const RANGE = {
     0x0002: 2,

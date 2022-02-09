@@ -1,17 +1,10 @@
 import {
-    POLAR_MEASUREMENT_DATA_SERVICE_UUID,
-    POLAR_CHARACTERISTICS,
-    POLAR_H10_UNDOCUMENTED_SERVICE,
-    POLAR_UUID1,
-    POLAR_UUID2,
     POLAR_ERROR_CODES,
     MEASUREMENT_TYPE,
     MEASUREMENT_NAME,
     SETTING_TYPE,
     SETTING_TYPE_NAME,
-    CONTROL_POINT_REQUEST,
     PMD_FLAG,
-    POLAR_NAMES,
     OP_CODE,
     SETTING_VALUES,
     ACC_FRAMETYPE,
@@ -29,36 +22,39 @@ function parseFeatureReadResponse (data) {
 
     const flags = data.getUint8(1);
     result[MEASUREMENT_TYPE.ECG] = !!(flags & PMD_FLAG.ECG_SUPPORTED);
-    result[MEASUREMENT_TYPE.PPG]  = !!(flags & PMD_FLAG.PPG_SUPPORTED);
-    result[MEASUREMENT_TYPE.ACCELERATION]  = !!(flags & PMD_FLAG.ACC_SUPPORTED);
-    result[MEASUREMENT_TYPE.PP_INTERVAL]  = !!(flags & PMD_FLAG.PPI_SUPPORTED);
-    result[MEASUREMENT_TYPE.GYROSCOPE]  = !!(flags & PMD_FLAG.GYRO_SUPPORTED);
-    result[MEASUREMENT_TYPE.MAGNETOMETER]  = !!(flags & PMD_FLAG.MAG_SUPPORTED);
+    result[MEASUREMENT_TYPE.PPG] = !!(flags & PMD_FLAG.PPG_SUPPORTED);
+    result[MEASUREMENT_TYPE.ACCELERATION] = !!(flags & PMD_FLAG.ACC_SUPPORTED);
+    result[MEASUREMENT_TYPE.PP_INTERVAL] = !!(flags & PMD_FLAG.PPI_SUPPORTED);
+    result[MEASUREMENT_TYPE.GYROSCOPE] = !!(flags & PMD_FLAG.GYRO_SUPPORTED);
+    result[MEASUREMENT_TYPE.MAGNETOMETER] = !!(flags & PMD_FLAG.MAG_SUPPORTED);
     return result;
 }
-
 
 
 function parseControlPointResponse (data) {
 
     let i = 0;
     const result = {};
-    const datatype = data.getUint8(i++);
+    const datatype = data.getUint8(i);
+    i += 1;
 
     if (datatype !== CONTROL_POINT_RESPONSE_TYPE.MEASUREMENT_CONTROL) {
         console.log("not control point response?!?");
         return result;
     }
 
-    const op_code = data.getUint8(i++);
-    const measurementCode = data.getUint8(i++);
+    const op_code = data.getUint8(i);
+    i += 1;
+    const measurementCode = data.getUint8(i);
+    i += 1;
 
     result.measurement = {
         code: measurementCode,
         name: MEASUREMENT_NAME[measurementCode]
     };
 
-    const statusCode = data.getUint8(i++);
+    const statusCode = data.getUint8(i);
+    i += 1;
 
     result.status = {
         code: statusCode,
@@ -67,19 +63,21 @@ function parseControlPointResponse (data) {
     result.error = (POLAR_ERROR_CODES[statusCode] !== "SUCCESS");
 
 
-    const moreFrames = data.getUint8(i++);
-    if (!!moreFrames) {
+    const moreFrames = data.getUint8(i);
+    i += 1;
+
+    if (moreFrames) {
         result.moreFrames = moreFrames;
     }
 
     switch (op_code) {
-        case  OP_CODE.GET_MEASUREMENT_SETTINGS:
+        case OP_CODE.GET_MEASUREMENT_SETTINGS:
             result.operation = {
                 name: "parameterMap",
                 code: op_code
             };
             break;
-        case  OP_CODE.START_MEASUREMENT:
+        case OP_CODE.START_MEASUREMENT:
             result.operation = {
                 name: "startStream",
                 code: op_code
@@ -94,7 +92,6 @@ function parseControlPointResponse (data) {
                 code: op_code
             };
             return result;
-            break;
     }
 
 
@@ -103,7 +100,8 @@ function parseControlPointResponse (data) {
 
 
     while (i < data.byteLength) {
-        const parameterCode = data.getUint8(i++);
+        const parameterCode = data.getUint8(i);
+        i += 1;
 
         const parameter = {
             name: SETTING_TYPE_NAME[parameterCode],
@@ -129,7 +127,8 @@ function parseControlPointResponse (data) {
 
         }
         parameters.push(parameter);
-        const length = data.getUint8(i++);
+        const length = data.getUint8(i);
+        i += 1;
 
         for (let j = i + length * 2; i < j; i += 2) {
             const value = [data.getUint16(i, true)];
@@ -143,7 +142,6 @@ function parseControlPointResponse (data) {
 }
 
 
-
 function parseECGData (data, settings = {}) {
     const {
         channels = 1,
@@ -151,7 +149,8 @@ function parseECGData (data, settings = {}) {
     } = settings;
 
     let i = 0;
-    const frameType = data.getUint8(i++);
+    const frameType = data.getUint8(i);
+    i += 1;
     const result = [];
     const metadata = {};
 
@@ -161,7 +160,7 @@ function parseECGData (data, settings = {}) {
 
             // read 24 bits as 3 unsigned bytes, concatinate, shift to
             const shift = 32 - resolution;
-            for ( ; i < data.byteLength; i += 3) {
+            for (; i < data.byteLength; i += 3) {
                 // concatinate 3 unsigned bytes, convert to 32 bit signed and scale to -1...1
                 result.push(
                     //[((data.getUint8(i + 2) << 16) | data.getUint8(i + 1) << 8 | data.getUint8(i))]
@@ -183,7 +182,6 @@ function parseECGData (data, settings = {}) {
             break;
 
 
-
         default:
             console.error("unknown ecg frame type");
             break;
@@ -196,11 +194,9 @@ function parseECGData (data, settings = {}) {
 }
 
 
-
 function parsePPGData (data, settings) {
     return {data};
 }
-
 
 
 function parseAccelerationData (data, settings = {}) {
@@ -210,7 +206,8 @@ function parseAccelerationData (data, settings = {}) {
     } = settings;
 
     let i = 0;
-    const frameType = data.getUint8(i++);
+    const frameType = data.getUint8(i);
+    i += 1;
     const result = [];
     const metadata = {};
     const accumulatedValues = [];
@@ -219,14 +216,15 @@ function parseAccelerationData (data, settings = {}) {
         case ACC_FRAMETYPE.RES8:
             metadata.frameType = "8 bit";
             while (i < data.byteLength - 3) {
-                accumulatedValues[0] = data.getInt8(i++, true) / 128;
-                accumulatedValues[1] = data.getInt8(i++, true) / 128;
-                accumulatedValues[2] = data.getInt8(i++, true) / 128;
+                accumulatedValues[0] = data.getInt8(i, true) / 128;
+                accumulatedValues[1] = data.getInt8(i + 1, true) / 128;
+                accumulatedValues[2] = data.getInt8(i + 2, true) / 128;
+                i += 3;
                 result.push([...accumulatedValues]);
             }
             break;
         case ACC_FRAMETYPE.RES16:
-            for ( ; i < data.byteLength; i += 6) {
+            for (; i < data.byteLength; i += 6) {
                 accumulatedValues[0] = data.getInt16(i, true) / (1 << 15);
                 accumulatedValues[1] = data.getInt16(i + 2, true) / (1 << 15);
                 accumulatedValues[2] = data.getInt16(i + 4, true) / (1 << 15);
@@ -234,7 +232,7 @@ function parseAccelerationData (data, settings = {}) {
             }
             break;
         case ACC_FRAMETYPE.RES24:
-            for ( ; i < data.byteLength; i += 9) {
+            for (; i < data.byteLength; i += 9) {
                 accumulatedValues[0] = data.getInt32(i, true) >> 8;
                 accumulatedValues[1] = data.getInt32(i + 3, true) >> 8;
                 // TODO: possibly off by one
@@ -244,17 +242,15 @@ function parseAccelerationData (data, settings = {}) {
             break;
         case ACC_FRAMETYPE.DELTA:
             metadata.frameType = "delta";
-            metadata.deltaResolutionPrChannel = data.getUint8(i++, true);
-            metadata.deltaSampleCount = data.getUint8(i++, true);
+            metadata.deltaResolutionPrChannel = data.getUint8(i, true);
+            i += 1;
+            metadata.deltaSampleCount = data.getUint8(i, true);
+            i += 1;
             metadata.deltaSampleBytes = Math.ceil(deltaResolutionPrChannel * channels / 8);
 
-
-            //for (let end = i + deltaSampleBytes * deltaSampleCount; i < end; i += deltaSampleBytes) {
-                //accumulatedValues[0] += data.getInt32(i, true) >> (32 - deltaResolutionPrChannel);
-                // TODO: channel 1 and 2
-                result.push([...accumulatedValues]);
-            //}
+            result.push([...accumulatedValues]);
             break;
+
         default:
             console.error("unknown acc frame type");
     }
@@ -265,7 +261,6 @@ function parseAccelerationData (data, settings = {}) {
         data: result
     };
 }
-
 
 
 function parseMeasurementData (data, measurementSettings) {

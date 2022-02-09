@@ -57,7 +57,6 @@ const noise = {
 };
 
 
-
 class NoiseProcessor extends AudioWorkletProcessor {
     constructor () {
         super();
@@ -83,14 +82,12 @@ class NoiseProcessor extends AudioWorkletProcessor {
                 const generator = this.generators.find(([name, fn]) => name === message);
                 if (generator) {
                     this.selectedGenerator = generator[1];
-                } else {
-                    console.log("finner ikke " + message)
                 }
                 break;
         }
     }
 
-    process (inputs, outputs, parameters) {
+    process (inputs, outputs) {
         const signalOutput = outputs[0][0];
 
         if (this.active) {

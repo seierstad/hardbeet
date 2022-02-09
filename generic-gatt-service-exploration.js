@@ -11,8 +11,6 @@ characteristicNotificationEventHandler (event) {
 }
 
 
-
-
 function lookupNameFromUUID (uuid, dictionaries) {
     let name = null;
 
@@ -45,8 +43,6 @@ function getCharacteristicName (uuid) {
 function getServiceName (uuid) {
     return lookupNameFromUUID(uuid, [POLAR_NAMES, GATT_SERVICE_NAME]);
 }
-
-
 
 
 */
