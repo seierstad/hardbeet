@@ -59,13 +59,13 @@ class MidiOutput extends MidiPort {
     }
 
 
-    clockStartHandler (event) {
+    clockStartHandler () {
         this.clockRunning = true;
         this.clockUI();
         this.setClockInterval();
     }
 
-    clockStopHandler (event) {
+    clockStopHandler () {
         this.clockRunning = false;
         this.clockUI();
         clearInterval(this.clockInterval);

@@ -7,6 +7,13 @@ const LOGLEVEL = {
     ERROR: 3
 };
 
+const LEVEL_CLASS = {
+    0: "debug",
+    1: "info",
+    2: "warning",
+    3: "error"
+};
+
 class Status {
     constructor (rootElement) {
         this.rootElement = rootElement;
@@ -18,6 +25,7 @@ class Status {
     log (message, level = LOGLEVEL.DEBUG) {
         const logEntryElement = document.createElement("p");
         logEntryElement.classList.add("log-entry");
+        logEntryElement.classList.add(LEVEL_CLASS[level]);
 
         const timestamp = new Date();
         const timestampElement = document.createElement("time");
@@ -33,6 +41,10 @@ class Status {
         logEntryElement.appendChild(messageElement);
 
         this.messageContainer.appendChild(logEntryElement);
+    }
+
+    error (message) {
+        this.log(message, LOGLEVEL.ERROR);
     }
 }
 

@@ -3,8 +3,9 @@
 import Service from "./service.js";
 
 class UserData extends Service {
-    constructor (service) {
+    constructor (service, logger = console) {
         super(service, "user data");
+        this.logger = logger;
 
         this.initCharacteristics();
     }
@@ -16,11 +17,11 @@ class UserData extends Service {
     }
 
     handleFirstNameCharacteristic (characteristic) {
-        return characteristic.readValue().then(firstNameData => this.firstName = firstName.getUint8(0));
+        return characteristic.readValue().then(firstName => this.firstName = firstName.getUint8(0));
     }
 
     set firstName (name) {
-        console.log({"firstName": name});
+        this.logger.log({"firstName": name});
     }
 }
 

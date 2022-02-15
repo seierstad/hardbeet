@@ -81,7 +81,7 @@ class NoiseProcessor extends AudioWorkletProcessor {
                 break;
 
             case "color":
-                const generator = this.generators.find(([name, fn]) => name === message);
+                const generator = this.generators.find(([name]) => name === message);
                 if (generator) {
                     this.selectedGenerator = generator[1];
                 }

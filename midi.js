@@ -1,16 +1,11 @@
 "use strict";
 
 import {
-    MESSAGE_TYPE,
-    SYSEX_TYPE,
-    CONTROL
+    MESSAGE_TYPE
 } from "./midi-constants.js";
 
 import MidiInput from "./midi-input.js";
 import MidiOutput from "./midi-output.js";
-
-const MIDI_BLE_SERVICE_UUID = "03b80e5a-ede8-4b33-a751-6ce34ec4c700";
-const MIDI_BLE_CHARACTERISTIC_UUID = "7772e5db-3868-4112-a1a9-f2669d106bf3";
 
 
 class Midi {
@@ -27,7 +22,10 @@ class Midi {
 
         this.addModulationData = this.addModulationData.bind(this);
         this.checkboxHandler = this.checkboxHandler.bind(this);
+        this.connectHandler = this.connectHandler.bind(this);
+        this.addConnectButton = this.addConnectButton.bind(this);
         this.onAccess = this.onAccess.bind(this);
+        this.onAccessFailure = this.onAccessFailure.bind(this);
         this.sendPitch = this.sendPitch.bind(this);
         this.playBuffer = this.playBuffer.bind(this);
         this.addConnectButton();
@@ -72,7 +70,10 @@ class Midi {
 
     addModulationData (data, parameters = {}) {
         this.buffer.push(...data.map(([value]) => value));
-        const samplerate = (parameters.hasOwnProperty("samplerate")) ? parameters.samplerate : 130;
+        const {
+            samplerate = 130
+        } = parameters;
+
         if (this.samplerate !== samplerate) {
             this.samplerate = samplerate;
         }

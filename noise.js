@@ -36,7 +36,6 @@ class Noise extends AudioWorkletNode {
 
         this.rootElement = null;
 
-        this.port.onmessage = this.messageHandler.bind(this);
         this.toggleHandler = this.toggleHandler.bind(this);
         this.colorHandler = this.colorHandler.bind(this);
 
@@ -68,16 +67,6 @@ class Noise extends AudioWorkletNode {
             this.rootElement.appendChild(new Toggle("color", [["white"], ["pink"]], "white", this.colorHandler).rootElement);
         }
     }
-
-    messageHandler (event) {
-        const {
-            type,
-            message,
-            data
-        } = JSON.parse(event.data);
-    }
-
-
 }
 
 export default Noise;

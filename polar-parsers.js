@@ -41,7 +41,6 @@ function parseControlPointResponse (data) {
     i += 1;
 
     if (datatype !== CONTROL_POINT_RESPONSE_TYPE.MEASUREMENT_CONTROL) {
-        console.log("not control point response?!?");
         return result;
     }
 
@@ -124,7 +123,7 @@ function parseControlPointResponse (data) {
                 parameter.unit = "";
                 break;
             default:
-                console.log("unknown parameter");
+                // "unknown parameter"
                 break;
 
         }
@@ -185,7 +184,7 @@ function parseECGData (data, settings = {}) {
 
 
         default:
-            console.error("unknown ecg frame type");
+            // "unknown ecg frame type"
             break;
     }
     return {
@@ -197,7 +196,7 @@ function parseECGData (data, settings = {}) {
 
 
 function parsePPGData (data, settings) {
-    return {data};
+    return {data, settings};
 }
 
 

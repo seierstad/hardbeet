@@ -1,8 +1,9 @@
 "use strict";
 
 class MidiPort {
-    constructor (port) {
+    constructor (port, logger = console) {
         this.port = port;
+        this.logger = logger;
         this.rootElement = document.createElement("fieldset");
         const legend = document.createElement("legend");
         legend.innerText = `${port.manufacturer} ${port.name}`;
@@ -30,7 +31,7 @@ class MidiPort {
     }
 
     openUI () {
-        console.log("TODO: implement function openUI() in class " + this.super.name);
+        this.logger.log("TODO: implement function openUI() in class " + this.super.name);
     }
 
     closeHandler () {
@@ -44,7 +45,7 @@ class MidiPort {
     }
 
     closeUI () {
-        console.log("TODO: implement function closeUI() in class " + this.constructor.name);
+        this.logger.log("TODO: implement function closeUI() in class " + this.constructor.name);
     }
 }
 

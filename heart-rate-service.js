@@ -101,17 +101,17 @@ class HeartRateService extends Service {
 
     heartRateChangedHandler (event) {
         const parsed = parseHeartRate(event.target.value);
-        if (parsed.hasOwnProperty("heartRate")) {
+        if (Object.prototype.hasOwnProperty.call(parsed, "heartRate")) {
             this.heartRate = parsed.heartRate;
             this.heartRateHistory.push([parsed.heartRate, parsed.datetime]);
             this.dataCallbackFn("heartRate", [parsed.heartRate]);
         }
-        if (parsed.hasOwnProperty("rrIntervals")) {
+        if (Object.prototype.hasOwnProperty.call(parsed, "rrIntervals")) {
             this.dataCallbackFn("rrIntervals", parsed.rrIntervals.map(d => [d]));
             this.rrIntervals = parsed.rrIntervals;
             this.rrHistory.push([parsed.rrIntervals, parsed.datetime]);
         }
-        if (parsed.hasOwnProperty("contactDetected")) {
+        if (Object.prototype.hasOwnProperty.call(parsed, "contactDetected")) {
             this.contactDetected = parsed.contactDetected;
         }
     }

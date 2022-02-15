@@ -10,9 +10,7 @@ import {
 import Visualizer from "./visualizer.js";
 
 import {
-    parseMeasurementData,
-    parseFeatureReadResponse,
-    parseControlPointResponse
+    parseMeasurementData
 } from "./polar-parsers.js";
 
 
@@ -96,11 +94,11 @@ class PolarFeature {
 
     }
 
-    normalizeHandler (event) {
+    normalizeHandler () {
         this.normalizeFactor = 1 / this.absoluteMax;
     }
 
-    resetHandler (event) {
+    resetHandler () {
         this.max = 0;
         this.min = 0;
         this.visualizer.reset();
@@ -122,7 +120,7 @@ class PolarFeature {
         return [Math.min(Math.max(value * this.normalizeFactor, -1), 1)];
     }
 
-    parseData (data, callback) {
+    parseData (data) {
         const properties = parameterList2Properties(this.activeStreamProperties);
         const parsedDataResponse = parseMeasurementData(data, properties);
         this.data = parsedDataResponse.data;

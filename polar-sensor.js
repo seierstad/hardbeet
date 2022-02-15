@@ -3,20 +3,10 @@
 import {
     POLAR_CHARACTERISTICS,
     POLAR_MEASUREMENT_DATA_SERVICE_UUID,
-    POLAR_UUID1,
-    POLAR_UUID2,
-    POLAR_NAMES,
-    POLAR_H10_UNDOCUMENTED_SERVICE,
-    POLAR_ERROR_CODES,
     MEASUREMENT_TYPE,
-    MEASUREMENT_NAME,
-    SETTING_TYPE_NAME,
-    SETTING_TYPE,
     SETTING_LENGTH,
     CONTROL_POINT_REQUEST,
-    PMD_FLAG,
     OP_CODE,
-    SETTING_VALUES,
     CONTROL_POINT_RESPONSE_TYPE
 } from "./polar-codes.js";
 
@@ -39,6 +29,21 @@ class PolarSensor extends Sensor {
         this._featureSupport = {};
         this._streamSettings = {};
         this.dataCallback = {};
+        this.position = {
+            x: 0,
+            y: 0,
+            z: 0
+        };
+        this.velocity = {
+            x: 0,
+            y: 0,
+            z: 0
+        };
+        this.acceleration_offset = {
+            x: 0,
+            y: 0,
+            z: 0
+        };
 
         this.connectPmdService = this.connectPmdService.bind(this);
         this.featureCommandHandler = this.featureCommandHandler.bind(this);
@@ -72,7 +77,6 @@ class PolarSensor extends Sensor {
 
 
     handlePMDControlPointChanged (event) {
-        console.log({event});
         switch (event.target.value.getUint8(0)) {
 
             case CONTROL_POINT_RESPONSE_TYPE.FEATURE_READ:
@@ -87,8 +91,7 @@ class PolarSensor extends Sensor {
                         name: opName
                     },
                     measurement: {
-                        code: measurementCode,
-                        name
+                        code: measurementCode
                     },
                     error,
                     status,
@@ -126,7 +129,7 @@ class PolarSensor extends Sensor {
 
                 break;
             default:
-                console.error("unknown control point response");
+                this.logger.log("unknown control point response");
         }
     }
 
@@ -141,7 +144,7 @@ class PolarSensor extends Sensor {
 
         return controlPoint.readValue().then(
             parseFeatureReadResponse,
-            error => console.error("error when parsing control point initial response: " + error)
+            error => this.logger.log("error when parsing control point initial response: " + error)
         );
     }
 
@@ -159,7 +162,7 @@ class PolarSensor extends Sensor {
 
 
     handlePMDDataMTUCharacteristic (characteristic) {
-        console.log("legger til datakildehåndtering");
+        this.logger.log("legger til datakildehåndtering");
         if (characteristic.properties.notify) {
             characteristic.startNotifications();
         }
@@ -198,7 +201,7 @@ class PolarSensor extends Sensor {
         }
     }
 
-    getParametersForFeature (feature) {
+    getParametersForFeature () {
         Object.entries(this.featureSupport).map(([a, b]) => {
             let featureElement = this.featuresElement.querySelector(`.feature-${a}`);
             if (!featureElement) {
@@ -229,8 +232,6 @@ class PolarSensor extends Sensor {
     }
 
     featureCommandHandler (featureId, operationCode, parameters) {
-        console.log({featureId, operationCode, parameters});
-
         let request;
 
         switch (operationCode) {
@@ -255,10 +256,8 @@ class PolarSensor extends Sensor {
                 request = Uint8Array.of(operationCode, featureId);
                 break;
             default:
-                console.error("unknown operation code: " + operationCode);
+                this.logger.error("unknown operation code: " + operationCode);
         }
-
-        console.log({request});
 
         this.pmdControlPoint.writeValueWithoutResponse(request);
 
@@ -266,7 +265,6 @@ class PolarSensor extends Sensor {
 
     set streamSettings (streamSettings) {
         this._streamSettings = streamSettings;
-        console.log({streamSettings});
     }
 
     get streamSettings () {
@@ -286,7 +284,7 @@ class PolarSensor extends Sensor {
             this.featuresElement.appendChild(list);
 
             Object.entries(support)
-                .filter(([key, supported]) => !!supported)
+                .filter(([, supported]) => !!supported)
                 .forEach(([key]) => {
 
                     if (!this.features[key]) {
