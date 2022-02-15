@@ -55,7 +55,7 @@ function addSensor () {
             sensorsSection.appendChild(sensor.rootElement);
         },
         error => {
-            console.error("device request error: " + error);
+            status.error("device request error: " + error);
         }
     );
 }
@@ -98,7 +98,7 @@ const pageLoadHandler = () => {
     if (!navigator.bluetooth || typeof navigator.bluetooth.getAvailability !== "function") {
         unavailableBT();
     } else {
-        navigator.bluetooth.onadvertisementreceived = event => console.log({"type": "onadvertisement", event});
+        navigator.bluetooth.onadvertisementreceived = event => status.log({"type": "onadvertisement", event});
         navigator.bluetooth.addEventListener("advertisementreceived", event => status.log("bluetooth advertisement received: " + event));
         navigator.bluetooth.addEventListener("availabilitychanged", event => status.log("bluetooth availability changed: " + event));
 
