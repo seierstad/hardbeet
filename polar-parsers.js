@@ -16,19 +16,28 @@ import {
 
 function parseFeatureReadResponse (data) {
 
-    const result = {};
-    const datatype = data.getUint8(0);
-    if (datatype !== CONTROL_POINT_RESPONSE_TYPE.FEATURE_READ) {
-        return result;
-    }
-
     const flags = data.getUint8(1);
-    result[MEASUREMENT_TYPE.ECG] = !!(flags & PMD_FLAG.ECG_SUPPORTED);
-    result[MEASUREMENT_TYPE.PPG] = !!(flags & PMD_FLAG.PPG_SUPPORTED);
-    result[MEASUREMENT_TYPE.ACCELERATION] = !!(flags & PMD_FLAG.ACC_SUPPORTED);
-    result[MEASUREMENT_TYPE.PP_INTERVAL] = !!(flags & PMD_FLAG.PPI_SUPPORTED);
-    result[MEASUREMENT_TYPE.GYROSCOPE] = !!(flags & PMD_FLAG.GYRO_SUPPORTED);
-    result[MEASUREMENT_TYPE.MAGNETOMETER] = !!(flags & PMD_FLAG.MAG_SUPPORTED);
+    const result = {
+        [MEASUREMENT_TYPE.ECG]: {
+            supported: !!(flags & PMD_FLAG.ECG_SUPPORTED)
+        },
+        [MEASUREMENT_TYPE.PPG]: {
+            supported: !!(flags & PMD_FLAG.PPG_SUPPORTED)
+        },
+        [MEASUREMENT_TYPE.ACCELERATION]: {
+            supported: !!(flags & PMD_FLAG.ACC_SUPPORTED)
+        },
+        [MEASUREMENT_TYPE.PP_INTERVAL]: {
+            supported: !!(flags & PMD_FLAG.PPI_SUPPORTED)
+        },
+        [MEASUREMENT_TYPE.GYROSCOPE]: {
+            supported: !!(flags & PMD_FLAG.GYRO_SUPPORTED)
+        },
+        [MEASUREMENT_TYPE.MAGNETOMETER]: {
+            supported: !!(flags & PMD_FLAG.MAG_SUPPORTED)
+        }
+    };
+
     return result;
 }
 

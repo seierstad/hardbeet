@@ -1,5 +1,7 @@
 "use strict";
 
+import {html, Component} from "./preact-standalone.module.min.js";
+
 import {
     OP_CODE,
     MEASUREMENT_NAME,
@@ -25,82 +27,81 @@ const parameterList2Properties = (parameterList) => {
 
 
 class PolarFeature {
-    constructor (
-        featureCode,
-        commandFn = () => console.log("command " + featureCode),
-        state = {streaming: false}
-    ) {
+    constructor ({featureCode, commandFn}) {
         this.featureCode = featureCode;
+
         this.commandFn = commandFn;
-        this._parameters = {};
         this.requestedStreamProperties = [];
         this.activeStreamProperties = [];
 
         this.normalizeFactor = 1;
-        this._state = {};
-        this.state = state;
         this.inputs = {};
 
         this.submitHandler = this.submitHandler.bind(this);
         this.resetHandler = this.resetHandler.bind(this);
         this.normalize = this.normalize.bind(this);
         this.normalizeHandler = this.normalizeHandler.bind(this);
-
-        this.rootElement = document.createElement("div");
-        this.form = document.createElement("form");
-        this.fieldset = document.createElement("fieldset");
-
-        const legend = document.createElement("legend");
-        legend.innerText = MEASUREMENT_NAME[featureCode];
-        this.fieldset.appendChild(legend);
-
-        this.startButton = document.createElement("button");
-        this.startButton.name = "operation";
-        this.startButton.type = "submit";
-        this.startButton.innerText = "start";
-        this.startButton.value = OP_CODE.START_MEASUREMENT;
-
-        this.stopButton = document.createElement("button");
-        this.stopButton.name = "operation";
-        this.stopButton.type = "submit";
-        this.stopButton.innerText = "stop";
-        this.stopButton.value = OP_CODE.STOP_MEASUREMENT;
-
-        this.fieldset.appendChild(this.startButton);
-        this.fieldset.appendChild(this.stopButton);
-        this.form.appendChild(this.fieldset);
-        this.form.addEventListener("submit", this.submitHandler);
-        this.rootElement.appendChild(this.form);
+        this.controlPointHandler = this.controlPointHandler.bind(this);
 
         this.visualizer = new Visualizer();
-        this.rootElement.appendChild(this.visualizer.rootElement);
+        //this.rootElement.appendChild(this.visualizer.rootElement);
 
-        this.resetButton = document.createElement("button");
-        this.resetButton.innerText = "reset";
-        this.resetButton.addEventListener("click", this.resetHandler);
-        this.rootElement.appendChild(this.resetButton);
+        this.state = {
+            max: null,
+            min: null,
+            normalizeFactor: 1,
+            absoluteMax: Number.EPSILON
+        };
+    }
 
-        this.normalizeButton = document.createElement("button");
-        this.normalizeButton.innerText = "normalize";
-        this.normalizeButton.addEventListener("click", this.normalizeHandler);
-        this.rootElement.appendChild(this.normalizeButton);
+    render (props, state) {
+        const {featureCode, parameters = []} = props;
+        const {min, max, normalizeFactor} = state;
 
-        this._max = null;
-        this._min = null;
-        this.maxElement = document.createElement("span");
-        this.minElement = document.createElement("span");
-        this.rootElement.appendChild(this.maxElement);
-        this.rootElement.appendChild(this.minElement);
+        return html`
+            <div>
+                <form onSubmit=${this.submitHandler}>
+                    <fieldset>
+                        <legend>${MEASUREMENT_NAME[featureCode]}</legend>
+                        ${parameters.map(({name, values, code, unit}) => html`
+                            <label>
+                                <span class="label-text">${name}</span>
+                                <select name=${code}>
+                                    ${values.map(({label: optionLabel, value}) => html`
+                                        <option key=${value} value=${value}>${optionLabel} ${unit}</option>
+                                    `)}
+                                </select>
+                            </label>
+                        `)}
+                        <button name="operation" type="submit" value=${OP_CODE.START_MEASUREMENT}>start</button>
+                        <button name="operation" type="submit" value=${OP_CODE.STOP_MEASUREMENT}>stop</button>
+                        <!-- visualizer -->
+                        <button onClick=${this.resetHandler}>reset</button>
+                        <button onClick=${this.normalizeHandler}>normalize</button>
+                        <label class=${min * normalizeFactor < -1 ? "clip" : null}>
+                            <span class="label-text">min</span>
+                            <output value=${min} />
+                        </label>
+                        <label class=${max * this.normalizeFactor > 1 ? "clip" : null}>
+                            <span class="label-text">max</span>
+                            <output value=${max} />
+                        </label>
+                    </fieldset>
+                </form>
+            </div>
+        `;
+    }
 
+    controlPointHandler (event) {
+        console.log("controlPointHandler for " + this.featureCode);
     }
 
     normalizeHandler () {
-        this.normalizeFactor = 1 / this.absoluteMax;
+        this.setState({normalizeFactor: 1 / this.state.absoluteMax});
     }
 
     resetHandler () {
-        this.max = 0;
-        this.min = 0;
+        this.setState({min: 0, max: 0});
         this.visualizer.reset();
     }
 
@@ -134,37 +135,6 @@ class PolarFeature {
         return this._callback;
     }
 
-    set parameters (parameters) {
-        this._parameters = [...parameters];
-
-        this._parameters.forEach(({name, values, code, unit}) => {
-            const label = document.createElement("label");
-            const labelText = document.createElement("span");
-            labelText.innerText = name;
-            label.appendChild(labelText);
-
-            const input = document.createElement("select");
-            input.name = code;
-            label.appendChild(input);
-            this.fieldset.appendChild(label);
-            values.forEach(({label: optionLabel, value}) => {
-                const optionElement = document.createElement("option");
-                optionElement.value = value;
-                optionElement.innerText = `${optionLabel} ${unit}`;
-                input.appendChild(optionElement);
-            });
-        });
-    }
-
-    set state (state) {
-        this._state = state;
-        if (state.status === "running") {
-            this.activeStreamProperties = [
-                ...this.requestedStreamProperties
-            ];
-        }
-    }
-
     get absoluteMax () {
         return Math.max(Math.abs(this.max), Math.abs(this.min));
     }
@@ -184,32 +154,24 @@ class PolarFeature {
             this.min = min;
         }
 
-        if (min * this.normalizeFactor < -1) {
-            this.minElement.classList.add("clip");
-        }
-        if (max * this.normalizeFactor > 1) {
-            this.maxElement.classList.add("clip");
-        }
-
         const properties = parameterList2Properties(this.activeStreamProperties);
         this.visualizer.appendData(data, properties);
         this.callback(MEASUREMENT_NAME[this.featureCode], data.map(this.normalize), properties);
     }
 
+
     get max () {
-        return this._max;
+        return this.state.max;
     }
     set max (max) {
-        this._max = max;
-        this.maxElement.innerText = `max: ${this._max}`;
+        this.setState({max});
     }
 
     get min () {
-        return this._min;
+        return this.state.min;
     }
     set min (min) {
-        this._min = min;
-        this.minElement.innerText = `min: ${this._min}`;
+        this.setState({min});
     }
 
     set error (error) {

@@ -1,16 +1,11 @@
 "use strict";
+import {html} from "./preact-standalone.module.min.js";
 
-class Service {
-    constructor (service, headingText = "service") {
-        this.service = service;
-        this.rootElement = document.createElement("div");
-        this.rootElement.classList.add("service");
-        this.header = document.createElement("header");
-        const heading = document.createElement("h3");
-        heading.innerText = headingText;
-        this.header.appendChild(heading);
-        this.rootElement.appendChild(this.header);
-    }
-}
+const Service = ({heading = "service", children = null}) => (html`
+    <div class="service">
+        <header><h3>${heading}</h3></header>
+        ${children}
+    </div>
+`);
 
 export default Service;

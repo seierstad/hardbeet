@@ -1,72 +1,88 @@
 "use strict";
+import {html, Component} from "./preact-standalone.module.min.js";
 
-class Toggle {
-    constructor (name, values = [], defaultValue, handler, legend = name) {
-        const fieldset = document.createElement("fieldset");
-        const legendElement = document.createElement("legend");
-        legendElement.innerText = legend;
-        fieldset.appendChild(legendElement);
+class Toggle extends Component {
 
-        values.forEach(([value, label = value]) => {
-            const labelElement = document.createElement("label");
-            const labelText = document.createElement("span");
-            labelText.classList.add("label-text");
-            labelText.innerText = label;
-            labelElement.appendChild(labelText);
-            const radioButton = document.createElement("input");
-            radioButton.setAttribute("type", "radio");
-            radioButton.setAttribute("name", name);
-            radioButton.setAttribute("value", value);
-            radioButton.addEventListener("change", handler);
-            if (value === defaultValue) {
-                radioButton.setAttribute("checked", true);
-            }
-            labelElement.appendChild(radioButton);
-            fieldset.appendChild(labelElement);
-        });
+    render (props) {
+        const {
+            name,
+            values = [],
+            defaultValue,
+            handler,
+            legend = name
+        } = props;
 
-        this.rootElement = fieldset;
+        return html`
+            <fieldset>
+                <legend>${legend}</legend>
+                ${values.map(([value, label = value]) => html`
+                    <label>
+                        <span class="label-text">${label}</span>
+                        <input
+                            checked=${value === defaultValue}
+                            type="radio"
+                            name=${name}
+                            value=${value}
+                            onChange=${handler}
+                        />
+                    </label>
+                `)}
+            </fieldset>
+        `;
     }
 }
 
 
-class Noise extends AudioWorkletNode {
+class NoiseNode extends AudioWorkletNode {
     constructor (context) {
         super(context, "noise-processor");
+    }
 
-        this.rootElement = null;
+    set color (color) {
+        this.port.postMessage(JSON.stringify({
+            "type": "color",
+            "message": color
+        }));
+    }
 
+    set toggle (state) {
+        this.port.postMessage(JSON.stringify({
+            "type": "toggle",
+            "message": state
+        }));
+    }
+}
+
+class NoiseComponent extends Component {
+    constructor (props) {
+        super();
+
+        const {noise} = props;
+        this.noise = noise;
         this.toggleHandler = this.toggleHandler.bind(this);
         this.colorHandler = this.colorHandler.bind(this);
-
-        this.renderUI();
     }
 
     toggleHandler (event) {
-        this.port.postMessage(JSON.stringify({
-            "type": "toggle",
-            "message": event.target.value
-        }));
+        this.noise.toggle = event.target.value;
     }
 
     colorHandler (event) {
-        this.port.postMessage(JSON.stringify({
-            "type": "color",
-            "message": event.target.value
-        }));
+        this.noise.color = event.target.value;
     }
 
-    renderUI () {
-        if (this.rootElement === null) {
-            this.rootElement = document.createElement("div");
-            this.rootElement.classList.add("noise");
-            const heading = document.createElement("h5");
-            heading.innerText = "noise";
-            this.rootElement.appendChild(heading);
-            this.rootElement.appendChild(new Toggle("toggle", [["off"], ["on"]], "off", this.toggleHandler).rootElement);
-            this.rootElement.appendChild(new Toggle("color", [["white"], ["pink"]], "white", this.colorHandler).rootElement);
-        }
+    render () {
+        return html`
+            <div class="noise">
+                <h5>noise</h5>
+                <${Toggle} name="toggle" values=${[["off"], ["on"]]} defaultValue="off" handler=${this.toggleHandler} />
+                <${Toggle} name="color" values=${[["white"], ["pink"]]} defaultValue="white" handler=${this.colorHandler} />
+            </div>
+        `;
     }
 }
 
-export default Noise;
+export {
+    NoiseNode,
+    NoiseComponent
+};

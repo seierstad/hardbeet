@@ -1,6 +1,10 @@
 "use strict";
 
+import {html, Component} from "./preact-standalone.module.min.js";
 import Service from "./service.js";
+import {GATT_SERVICE_UUID} from "./GATT_constants.js";
+
+const UUID = GATT_SERVICE_UUID.HEART_RATE;
 
 const FLAG = {
     RATE_16_BITS: 0x1,
@@ -57,22 +61,66 @@ function parseHeartRate (data) {
 }
 
 
-class HeartRateService extends Service {
-    constructor (service, dataCallbackFn) {
-        super(service, "heart rate");
+class HeartRateService extends Component {
+    constructor ({service, dataCallbackFn = () => null}) {
+        super();
+
+        this.service = service;
         this.dataCallbackFn = dataCallbackFn;
+
         this.heartRateCharacteristic = null;
-        this.heartRateHistory = [];
-        this.rrHistory = [];
-        this.heartRateElement = null;
-        this.rrIntervalsElement = null;
-        this.locationElement = null;
-        this.body_sensor_location = null;
         this.handleBodySensorLocationCharacteristic = this.handleBodySensorLocationCharacteristic.bind(this);
         this.handleHeartRateMeasurementCharacteristic = this.handleHeartRateMeasurementCharacteristic.bind(this);
         this.heartRateChangedHandler = this.heartRateChangedHandler.bind(this);
 
+        this.state = {
+            bodySensorLocationInitialized: false,
+            heartRateMeasurementInitialized: false,
+            heartRate: null,
+            location: null,
+            rrIntervals: null,
+            contactDetected: null,
+            energyExpended: null
+        };
+
+    }
+
+    componentDidMount () {
         this.initCharacteristics();
+    }
+
+    render () {
+        const {
+            bodySensorLocationInitialized,
+            heartRateMeasurementInitialized,
+            location,
+            rrIntervals,
+            heartRate,
+            contactDetected,
+            energyExpended
+        } = this.state;
+
+        return html`
+            <${Service} heading="heart rate">
+                <div>${bodySensorLocationInitialized ? null : "sensor location initializing"}</div>
+                <div>${heartRateMeasurementInitialized ? null : "heart rate initializing"}</div>
+                ${location !== null ? html`
+                    <div class="sensor-location">sensor location: ${BODY_SENSOR_LOCATIONS[location] || "Unknown"}</div>
+                ` : null}
+                ${heartRate !== null ? html`
+                    <div class="heart-rate">heart rate: ${heartRate}</div>
+                ` : null}
+                ${rrIntervals !== null ? html`
+                    <div class="rr-intervals">rr intevals: ${rrIntervals.join(", ")}</div>
+                ` : null}
+                ${contactDetected !== null ? html`
+                    <div class="contact-detected">contact detected: ${contactDetected}</div>
+                ` : null}
+                ${energyExpended !== null ? html`
+                    <div class="energy-expended">energy expended: ${energyExpended}</div>
+                ` : null}
+            <//>
+        `;
     }
 
     initCharacteristics () {
@@ -87,63 +135,50 @@ class HeartRateService extends Service {
             this.location = "Unknown sensor location.";
             return Promise.resolve();
         }
-
-        return characteristic.readValue().then(sensorLocationData => this.location = sensorLocationData.getUint8(0));
+        this.setState({bodySensorLocationInitialized: true});
+        return characteristic.readValue().then(sensorLocationData => this.setState({location: sensorLocationData.getUint8(0)}));
     }
 
     handleHeartRateMeasurementCharacteristic (characteristic) {
         this.heartRateCharacteristic = characteristic;
         characteristic.addEventListener("characteristicvaluechanged", this.heartRateChangedHandler);
 
+        this.setState({heartRateMeasurementInitialized: true});
         return characteristic.startNotifications();
     }
 
 
     heartRateChangedHandler (event) {
         const parsed = parseHeartRate(event.target.value);
+        const newState = {};
+        let changed = false;
         if (Object.prototype.hasOwnProperty.call(parsed, "heartRate")) {
-            this.heartRate = parsed.heartRate;
-            this.heartRateHistory.push([parsed.heartRate, parsed.datetime]);
+            if (this.state.heartRate !== parsed.heartRate) {
+                changed = true;
+                newState.heartRate = parsed.heartRate;
+            }
             this.dataCallbackFn("heartRate", [parsed.heartRate]);
         }
         if (Object.prototype.hasOwnProperty.call(parsed, "rrIntervals")) {
-            this.dataCallbackFn("rrIntervals", parsed.rrIntervals.map(d => [d]));
-            this.rrIntervals = parsed.rrIntervals;
-            this.rrHistory.push([parsed.rrIntervals, parsed.datetime]);
+            if (this.state.rrIntervals !== parsed.rrIntervals) {
+                changed = true;
+                newState.rrIntervals = parsed.rrIntervals;
+            }
+            //this.rrHistory.push([parsed.rrIntervals, parsed.datetime]);
         }
         if (Object.prototype.hasOwnProperty.call(parsed, "contactDetected")) {
-            this.contactDetected = parsed.contactDetected;
+            if (this.state.contactDetected !== parsed.contactDetected) {
+                changed = true;
+                newState.contactDetected = parsed.contactDetected;
+            }
         }
-    }
-
-
-    set heartRate (heartRate) {
-        if (this.heartRateElement === null) {
-            this.heartRateElement = document.createElement("div");
-            this.heartRateElement.classList.add("heartRate");
-            this.rootElement.appendChild(this.heartRateElement);
+        if (changed) {
+            this.setState(newState);
         }
-        this.heartRateElement.innerText = heartRate;
-    }
-
-    set rrIntervals (rrIntervals) {
-        if (this.rrIntervalsElement === null) {
-            this.rrIntervalsElement = document.createElement("div");
-            this.rrIntervalsElement.classList.add("rr-intervals");
-            this.rootElement.appendChild(this.rrIntervalsElement);
-        }
-        this.rrIntervalsElement.innerText = rrIntervals.join(", ");
-    }
-
-    set location (location) {
-        if (this.locationElement === null) {
-            this.locationElement = document.createElement("div");
-            this.locationElement.classList.add("location");
-            this.rootElement.appendChild(this.locationElement);
-        }
-        this.locationElement.innerText = BODY_SENSOR_LOCATIONS[location] || "Unknown";
     }
 
 }
 
 export default HeartRateService;
+
+export {UUID};

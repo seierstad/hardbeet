@@ -1,53 +1,64 @@
 "use strict";
+import {html, Component} from "./preact-standalone.module.min.js";
+import {NoiseNode, NoiseComponent} from "./noise.js";
 
-import Noise from "./noise.js";
 
-class AudioOutput {
+class AudioOutput extends Component {
     constructor () {
+        super();
         this.ctx = null;
+        this.noise = null;
         this.carrierFrequency = 440;
         this.heartRate = 60;
         this.previousTimestamp = null;
 
-        this.rootElement = document.createElement("section");
-        const header = document.createElement("header");
-        const heading = document.createElement("h2");
-        heading.innerText = "Audio output";
-        header.appendChild(heading);
-        this.rootElement.appendChild(header);
-
         this._modulatorParameters = {};
         this.pingParameters = {};
 
-        this.startCarrierHandler = this.startCarrierHandler.bind(this);
-        this.stopCarrierHandler = this.stopCarrierHandler.bind(this);
+        this.toggleCarrierHandler = this.toggleCarrierHandler.bind(this);
         this.initialize = this.initialize.bind(this);
         this.addModulationData = this.addModulationData.bind(this);
         this.initNoise = this.initNoise.bind(this);
-        this.startConstantSource = this.startConstantSource.bind(this);
-        this.stopConstantSource = this.stopConstantSource.bind(this);
+        this.toggleConstantSource = this.toggleConstantSource.bind(this);
 
-        this.carrierButton = document.createElement("button");
-        this.carrierButton.innerText = "start carrier";
-        this.carrierButton.addEventListener("click", this.startCarrierHandler);
-        this.rootElement.appendChild(this.carrierButton);
-
-        this.constantSourceButton = document.createElement("button");
-        this.constantSourceButton.innerText = "start constant source";
-        this.constantSourceButton.addEventListener("click", this.startConstantSource);
-        this.rootElement.appendChild(this.constantSourceButton);
-
+        this.state = {
+            carrierRunning: false,
+            constantSourceRunning: false,
+            noiseInitialized: false
+        };
     }
 
-    startCarrierHandler () {
+    render (props, state) {
+        const {
+            carrierRunning,
+            constantSourceRunning,
+            noiseInitialized
+        } = state;
+
+        return html`
+            <section>
+                <header><h2>audio output</h2></header>
+                <button onClick=${this.toggleCarrierHandler}>${carrierRunning ? "stop" : "start"} carrier</button>
+                <button onClick=${this.toggleConstantSource}>${constantSourceRunning ? "stop" : "start"} constant source</button>
+                ${noiseInitialized ? html`<${NoiseComponent} noise=${this.noise} />` : null}
+            </section>
+        `;
+    }
+
+    toggleCarrierHandler () {
         if (this.ctx === null) {
             this.initialize();
         }
 
-        this.carrierOscillator.start();
-        this.carrierButton.innerText = "stop carrier";
-        this.carrierButton.removeEventListener("click", this.startCarrierHandler);
-        this.carrierButton.addEventListener("click", this.stopCarrierHandler);
+        if (this.state.carrierRunning) {
+            this.carrierOscillator.stop();
+            this.createCarrier();
+            this.setState({carrierRunning: false});
+        } else {
+            this.carrierOscillator.start();
+            this.setState({carrierRunning: true});
+        }
+
     }
 
     createCarrier () {
@@ -56,26 +67,19 @@ class AudioOutput {
         this.carrierOscillator.connect(this.modulatedGain);
     }
 
-    stopCarrierHandler () {
-        this.carrierOscillator.stop();
 
-        this.createCarrier();
-
-        this.carrierButton.innerText = "start carrier";
-        this.carrierButton.removeEventListener("click", this.stopCarrierHandler);
-        this.carrierButton.addEventListener("click", this.startCarrierHandler);
-    }
-
-
-    startConstantSource () {
+    toggleConstantSource () {
         if (this.ctx === null) {
             this.initialize();
         }
-
-        this.constantSource.start();
-        this.constantSourceButton.innerText = "stop constant source";
-        this.constantSourceButton.removeEventListener("click", this.startConstantSource);
-        this.constantSourceButton.addEventListener("click", this.stopConstantSource);
+        if (this.state.constantSourceRunning) {
+            this.constantSource.stop();
+            this.createConstantSource();
+            this.setState({constantSourceRunning: false});
+        } else {
+            this.constantSource.start();
+            this.setState({constantSourceRunning: true});
+        }
     }
 
     createConstantSource () {
@@ -83,20 +87,10 @@ class AudioOutput {
         this.constantSource.connect(this.modulatedGain);
     }
 
-    stopConstantSource () {
-        this.constantSource.stop();
-
-        this.createConstantSource();
-
-        this.constantSourceButton.innerText = "start constant source";
-        this.constantSourceButton.removeEventListener("click", this.stopConstantSource);
-        this.constantSourceButton.addEventListener("click", this.startConstantSource);
-    }
-
     initNoise () {
-        this.noise = new Noise(this.ctx);
+        this.noise = new NoiseNode(this.ctx);
         this.noise.connect(this.modulatedGain);
-        this.rootElement.appendChild(this.noise.rootElement);
+        this.setState({noiseInitialized: true});
     }
 
     initialize () {
@@ -107,7 +101,7 @@ class AudioOutput {
             this.masterGain = this.ctx.createGain();
 
             this.modulatedGain = this.ctx.createGain();
-            this.modulatedGain.gain.value = 0;
+            this.modulatedGain.gain.value = 0.4;
 
             this.createConstantSource();
             this.createCarrier();

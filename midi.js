@@ -1,21 +1,24 @@
 "use strict";
-
-import {
-    MESSAGE_TYPE
-} from "./midi-constants.js";
+import {html, Component} from "./preact-standalone.module.min.js";
+import {MESSAGE_TYPE} from "./midi-constants.js";
 
 import MidiInput from "./midi-input.js";
 import MidiOutput from "./midi-output.js";
 
 
-class Midi {
-    constructor (logger = console) {
-        this.logger = logger;
+class Midi extends Component {
+    constructor (props) {
+        super(props);
+
+        const {
+            log,
+            error
+        } = props;
+        this.log = log;
+        this.error = error;
         this.access = null;
         this.inputs = [];
         this.outputs = [];
-        this.rootElement = document.createElement("div");
-        this.midiChannel = 0;
         this._samplerate = null;
         this.samplerateChanged = false;
         this.buffer = [];
@@ -23,14 +26,44 @@ class Midi {
         this.addModulationData = this.addModulationData.bind(this);
         this.checkboxHandler = this.checkboxHandler.bind(this);
         this.connectHandler = this.connectHandler.bind(this);
-        this.addConnectButton = this.addConnectButton.bind(this);
         this.onAccess = this.onAccess.bind(this);
         this.onAccessFailure = this.onAccessFailure.bind(this);
         this.sendPitch = this.sendPitch.bind(this);
         this.playBuffer = this.playBuffer.bind(this);
-        this.addConnectButton();
 
         this.interval = null;
+        this.state = {
+            access: null,
+            accessRequested: false,
+            accessError: null
+        };
+    }
+
+    render (props, state) {
+        const {
+            access,
+            accessRequested,
+            accessError
+        } = state;
+
+        return (html`
+            <section id="midi">
+                <header><h2>MIDI</h2></header>
+                ${access ? html`
+                    <fieldset>
+                        <legend>inputs</legend>
+                        ${this.inputs.map((port, index) => html`<${MidiInput} port=${port} key=${index + "_" + port.id}/>`)}
+                    </fieldset>
+                    <fieldset>
+                        <legend>outputs</legend>
+                        ${this.outputs.map((port, index) => html`<${MidiOutput} port=${port} key=${index + "_" + port.id}/>`)}
+                    </fieldset>
+                ` : html`
+                    <button disabled=${accessRequested} onClick=${this.connectHandler}>connect midi</button>
+                `}
+                ${accessError ? html`<span>${accessError}</span>` : null}
+            </section>
+        `);
     }
 
     playBuffer () {
@@ -99,21 +132,16 @@ class Midi {
     }
 
     connectHandler () {
-        this.logger.log("Requesting access to MIDI.");
+        this.setState({accessRequested: true});
+        //this.logger.log("Requesting access to MIDI.");
         navigator.requestMIDIAccess({"sysex": true}).then(this.onAccess, this.onAccessFailure);
     }
 
     onAccessFailure (message) {
-        this.logger.log("Failed to get MIDI access: " + message);
+        this.log("Failed to get MIDI access: " + message);
+        this.setState({accessError: "Failed to get MIDI access: " + message});
     }
 
-    addConnectButton () {
-        const connectButton = document.createElement("button");
-        connectButton.innerText = "connect midi";
-        connectButton.addEventListener("click", this.connectHandler);
-        this.connectButton = connectButton;
-        this.rootElement.appendChild(connectButton);
-    }
 
     removeConnectButton () {
         this.connectButton.removeEventListener("click", this.connectHandler);
@@ -121,43 +149,20 @@ class Midi {
     }
 
     onAccess (access) {
-        this.removeConnectButton();
-        if (!this.inputsElement) {
-            const inputs = document.createElement("fieldset");
-            const inputsLegend = document.createElement("legend");
-            inputsLegend.innerText = "inputs";
-            inputs.appendChild(inputsLegend);
-
-            this.rootElement.appendChild(inputs);
-            this.inputsElement = inputs;
-        }
-        if (!this.outputsElement) {
-            const outputs = document.createElement("fieldset");
-            const outputsLegend = document.createElement("legend");
-            outputsLegend.innerText = "outputs";
-            outputs.appendChild(outputsLegend);
-
-            this.rootElement.appendChild(outputs);
-            this.outputsElement = outputs;
-        }
-
-        this.logger.log("MIDI access granted!");
-        this.access = access;
-        this.access.addEventListener("statechange", this.accessStateChangeHandler);
+        this.log("MIDI access granted!");
+        access.addEventListener("statechange", this.accessStateChangeHandler);
 
         const outputIterator = access.outputs.entries();
         for (let [, port] of outputIterator) {
-            const p = new MidiOutput(port);
-            this.outputs.push(p);
-            this.outputsElement.appendChild(p.rootElement);
+            this.outputs.push(port);
         }
 
         const inputIterator = access.inputs.entries();
         for (let [, port] of inputIterator) {
-            const p = new MidiInput(port);
-            this.inputs.push(p);
-            this.inputsElement.appendChild(p.rootElement);
+            this.inputs.push(port);
         }
+
+        this.setState({access});
     }
 }
 

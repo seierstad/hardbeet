@@ -1,13 +1,30 @@
 "use strict";
 
+import {html, Component} from "./preact-standalone.module.min.js";
 import Service from "./service.js";
+import {GATT_SERVICE_UUID} from "./GATT_constants.js";
 
-class UserData extends Service {
-    constructor (service, logger = console) {
-        super(service, "user data");
-        this.logger = logger;
+const UUID = GATT_SERVICE_UUID.USER_DATA;
 
-        this.initCharacteristics();
+class UserData extends Component {
+    constructor ({service, logger = console}) {
+        super();
+        this.service = service;
+
+        this.state = {
+            initialized: false,
+            firstName: null
+        };
+
+        this.initCharacteristics().then(() => this.setState({initialized: true}));
+    }
+
+    render (props, {initialized, firstName}) {
+        return !initialized ? null : html`
+            <${Service} heading="user data">
+                ${firstName === null ? null : html`<p class="first-name>first name: ${firstName}</p>`}
+            <//>
+        `;
     }
 
     initCharacteristics () {
@@ -21,8 +38,12 @@ class UserData extends Service {
     }
 
     set firstName (name) {
-        this.logger.log({"firstName": name});
+        this.setState({"firstName": name});
     }
 }
 
 export default UserData;
+
+export {
+    UUID
+};

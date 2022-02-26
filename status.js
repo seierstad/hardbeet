@@ -1,4 +1,5 @@
 "use strict";
+import {html, Component} from "./preact-standalone.module.min.js";
 
 const LOGLEVEL = {
     DEBUG: 0,
@@ -14,38 +15,48 @@ const LEVEL_CLASS = {
     3: "error"
 };
 
-class Status {
-    constructor (rootElement) {
-        this.rootElement = rootElement;
-        this.messageContainer = document.createElement("div");
-        this.messageContainer.classList.add("messages");
-        this.rootElement.appendChild(this.messageContainer);
+class LogEntry extends Component {
+    constructor (props) {
+        super();
+        const {
+            message: {
+                time
+            } = {}
+        } = props;
+
+        this.millis = time.getMilliseconds();
     }
 
-    log (message, level = LOGLEVEL.DEBUG) {
-        const logEntryElement = document.createElement("p");
-        logEntryElement.classList.add("log-entry");
-        logEntryElement.classList.add(LEVEL_CLASS[level]);
-
-        const timestamp = new Date();
-        const timestampElement = document.createElement("time");
-        timestampElement.classList.add("timestamp");
-        timestampElement.setAttribute("datetime", timestamp.toISOString());
-        const millis = timestamp.getMilliseconds();
-        const milliString = Array(3 - millis.toString(10).length).fill("0").join("") + millis;
-        timestampElement.innerText = timestamp.toLocaleTimeString("no-NO") + "." + milliString;
-        logEntryElement.appendChild(timestampElement);
-
-        const messageElement = document.createElement("span");
-        messageElement.innerText = message;
-        logEntryElement.appendChild(messageElement);
-
-        this.messageContainer.appendChild(logEntryElement);
+    render ({message = {}}) {
+        return html`
+            <p class=${["log-entry", LEVEL_CLASS[message.level]].join(" ")}>
+                <time class="timestamp" datetime=${message.time.toISOString()}>
+                    ${message.time.toLocaleTimeString("no-NO") + "." + Array(3 - this.millis.toString(10).length).fill("0").join("") + this.millis}
+                </time>
+                <span>${message.text}</span>
+            </p>
+        `;
     }
+}
 
-    error (message) {
-        this.log(message, LOGLEVEL.ERROR);
+class Status extends Component {
+
+    render ({messages = []}) {
+        return html`
+            <section id="status">
+                <header>
+                    <h2>log</h2>
+                </header>
+                <div class="messages">
+                    ${messages.map((message, index) => html`<${LogEntry} key=${index} message=${message} />`)}
+                </div>
+            </section>
+        `;
     }
 }
 
 export default Status;
+
+export {
+    LOGLEVEL
+};

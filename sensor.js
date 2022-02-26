@@ -1,26 +1,26 @@
 "use strict";
 
+import {html, Component} from "./preact-standalone.module.min.js";
+import Service from "./service.js";
+
 import {
     POLAR_MEASUREMENT_DATA_SERVICE_UUID,
     POLAR_UUID1,
     POLAR_H10_UNDOCUMENTED_SERVICE
 } from "./polar-codes.js";
 
-import {
-    GATT_SERVICE_UUID
-} from "./GATT_constants.js";
-
-import UserData from "./user-data.js";
-import BatteryService from "./battery-service.js";
-import HeartRateService from "./heart-rate-service.js";
-//import DeviceInformation from "./device-information.js";
+import UserDataService, {UUID as USER_DATA_SERVICE_UUID} from "./user-data.js";
+import BatteryService, {UUID as BATTERY_SERVICE_UUID} from "./battery-service.js";
+import HeartRateService, {UUID as HEART_RATE_SERVICE_UUID} from "./heart-rate-service.js";
+import DeviceInformationService, {UUID as DEVICE_INFORMATION_SERVICE_UUID} from "./device-information.js";
+import PolarService, {UUID as POLAR_SERVICE_UUID} from "./polar-service.js";
 
 
-const mainServiceUUID = GATT_SERVICE_UUID.HEART_RATE;
+const mainServiceUUID = HEART_RATE_SERVICE_UUID;
 const optionalServicesUUIDs = [
-    GATT_SERVICE_UUID.BATTERY,
-    GATT_SERVICE_UUID.DEVICE_INFORMATION,
-    GATT_SERVICE_UUID.USER_DATA,
+    BATTERY_SERVICE_UUID,
+    USER_DATA_SERVICE_UUID,
+    DEVICE_INFORMATION_SERVICE_UUID,
     //GATT_SERVICE_UUID.GENERIC_ACCESS,
     //GATT_SERVICE_UUID.GENERIC_ATTRIBUTE,
     //"00001801-0000-1000-8000-00805f9b34fb",
@@ -44,73 +44,101 @@ function byteArray2String (byteArray) {
 }
 */
 
-
-class Sensor {
-    constructor (device, index, logger = console, dataCallbackFn = (dataType, data, parameters) => logger.log({dataType, data, parameters})) {
-        this.logger = logger;
+class Sensor extends Component {
+    constructor ({device, index, dataCallbackFn}) {
+        super();
         this.index = index;
 
         this.dataCallbackFn = dataCallbackFn;
-        this.heartRateService = null;
-        this.services = {};
 
-        this.connectHeartRateService = this.connectHeartRateService.bind(this);
-        this.connectBatteryService = this.connectBatteryService.bind(this);
-        this.connectUserDataService = this.connectUserDataService.bind(this);
-
+        this.addServices = this.addServices.bind(this);
+        this.serviceError = this.serviceError.bind(this);
+        this.logService = this.logService.bind(this);
 
         this.handleGATTServerDisconnected = this.handleGATTServerDisconnected.bind(this);
 
-        this.rootElement = document.createElement("section");
-        this.rootElement.classList.add("sensor");
-
         this.serviceDescriptors = [{
-            id: "heart_rate",
-            connectFn: this.connectHeartRateService,
+            id: HEART_RATE_SERVICE_UUID,
+            connectFn: this.logService,
             errorFn: this.heartRateServiceError
         }, {
-            id: "battery_service",
-            connectFn: this.connectBatteryService,
+            id: BATTERY_SERVICE_UUID,
+            connectFn: this.logService,
             errorFn: this.batteryServiceError
         }, {
-            id: "user_data",
-            connectFn: this.connectUserDataService,
+            id: USER_DATA_SERVICE_UUID,
+            connectFn: this.logService,
             errorFn: this.userDataServiceError
+        }, {
+            id: DEVICE_INFORMATION_SERVICE_UUID,
+            connectFn: this.logService,
+            errorFn: this.serviceError
         }];
 
         this.device = device;
-        this.device.addEventListener("advertisementreceived", event => this.logger.log(`sensor ${this.index}: advertisement received: ${event}`));
+        this.device.addEventListener("advertisementreceived", event => console.log(`sensor ${this.index}: advertisement received: ${event}`));
         if (typeof this.device.watchAdvertisements === "function") {
             this.device.watchAdvertisements().then(
                 function () {
-                    this.logger.log(`sensor ${index}: watching advertisements`);
+                    console.log(`sensor ${index}: watching advertisements`);
                 },
                 error => this.logger.log("device watchAdvertisements error: " + error)
             );
         }
 
-        let header = document.createElement("header");
-        this.headerElement = header;
-        let heading = document.createElement("h2");
-        heading.innerText = "sensor " + index;
-        header.appendChild(heading);
-        this.rootElement.appendChild(header);
-        const nameElement = document.createElement("span");
-        nameElement.innerText = device.name;
-        nameElement.classList.add("sensor-device-name");
-        this.headerElement.appendChild(nameElement);
-
-        const idElement = document.createElement("span");
-        idElement.innerText = device.id;
-        idElement.classList.add("sensor-device-id");
-        this.headerElement.appendChild(idElement);
+        this.state = {
+            services: []
+        };
     }
 
-    connect () {
+    render () {
+        const {index, device} = this.props;
+        const {services = []} = this.state;
+
+        return html`
+            <div class="sensor">
+                <header>
+                    <h3>sensor ${index}</h3>
+                    <span class="sensor-device-name">${device.name}</span>
+                    <span class="sensor-device-id">${device.id}</span>
+                </header>
+                ${services.length > 0 ? (html`
+                    <div class="services">
+                        ${services.map(service => {
+                            console.log(service.uuid);
+                            if (typeof service.uuid === "string" && service.uuid.endsWith("-0000-1000-8000-00805f9b34fb")) {
+                                switch (parseInt(service.uuid.substring(4, 8), 16)) {
+                                    case HEART_RATE_SERVICE_UUID:
+                                        return html`<${HeartRateService} key=${service.uuid} service=${service} dataCallbackFn=${this.dataCallbackFn} />`;
+
+                                    case BATTERY_SERVICE_UUID:
+                                        return html`<${BatteryService} key=${service.uuid} service=${service} dataCallbackFn=${this.dataCallbackFn} />`;
+
+                                    case USER_DATA_SERVICE_UUID:
+                                        return html`<${UserDataService} key=${service.uuid} service=${service} dataCallbackFn=${this.dataCallbackFn} />`;
+
+                                    case DEVICE_INFORMATION_SERVICE_UUID:
+                                        return html`<${DeviceInformationService} key=${service.uuid} service=${service} dataCallbackFn=${this.dataCallbackFn} />`;
+
+                                }
+                            } else {
+                                switch (service.uuid) {
+                                    case POLAR_SERVICE_UUID:
+                                        return html`<${PolarService} key=${service.uuid} service=${service} dataCallbackFn=${this.dataCallbackFn} />`;
+                                }
+                            }
+                        })}
+                    </div>
+                `) : "no services :("}
+            </div>
+        `;
+    }
+
+    componentDidMount () {
         this.device.gatt.connect()
             .then(
                 server => this.setupGATTServer(server),
-                error => this.logger.log("gatt connection error: " + error)
+                error => console.log("gatt connection error: " + error)
             );
     }
 
@@ -124,39 +152,22 @@ class Sensor {
         this.server = server;
         this.server.device.addEventListener("gattserverdisconnected", this.handleGATTServerDisconnected);
 
-        const servicePromises = this.serviceDescriptors.map(s => server.getPrimaryService(s.id).then(s.connectFn, s.errorFn));
+        const servicePromises = this.serviceDescriptors.map(s => server.getPrimaryService(s.id));
 
-        return Promise.all(servicePromises);
+        return Promise.all(servicePromises).then(this.addServices);
     }
 
-
-    connectUserDataService (service) {
-        this.userData = new UserData(service);
-        this.rootElement.appendChild(this.userData.rootElement);
+    addServices (services) {
+        this.setState({services});
     }
 
-    userDataServiceError (error) {
+    serviceError (error) {
         this.logger.log(`${this.index}: user data service error: ${error}`);
     }
 
-
-    connectBatteryService (service) {
-        this.batteryService = new BatteryService(service);
-        this.rootElement.appendChild(this.batteryService.rootElement);
-    }
-
-    batteryServiceError (error) {
-        this.logger.log(`${this.index}: battery service error: ${error}`);
-    }
-
-
-    connectHeartRateService (service) {
-        this.heartRateService = new HeartRateService(service, this.dataCallbackFn);
-        this.rootElement.appendChild(this.heartRateService.rootElement);
-    }
-
-    heartRateServiceError (error) {
-        this.logger.log(`${this.index}: heart rate service error: ${error}`);
+    logService (service) {
+        console.log("logging " + service.uuid);
+        return service;
     }
 }
 

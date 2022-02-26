@@ -3,9 +3,9 @@
 //this.characteristicNotificationEventHandler = this.characteristicNotificationEventHandler.bind(this);
 //this.queryService = this.queryService.bind(this);
 
-/*
+import {POLAR_NAMES} from "./GATT_constants.js";
 
-characteristicNotificationEventHandler (event) {
+function characteristicNotificationEventHandler (event) {
     this.logger.log(
         `sensor ${this.index}:
          notification from ${getCharacteristicName(event.target.uuid)} -
@@ -34,6 +34,7 @@ function lookupNameFromUUID (uuid, dictionaries) {
     return name || uuid.toString();
 }
 
+/*
 function getDescriptorName (uuid) {
     return lookupNameFromUUID(uuid, [GATT_DESCRIPTOR_NAME]);
 }
@@ -42,12 +43,12 @@ function getCharacteristicName (uuid) {
     return lookupNameFromUUID(uuid, [POLAR_NAMES, CHARACTERISTIC_OR_OBJECT_TYPE]);
 }
 
+*/
 function getServiceName (uuid) {
     return lookupNameFromUUID(uuid, [POLAR_NAMES, GATT_SERVICE_NAME]);
 }
 
 
-*/
 /*
     queryService (uuid) {
         return this.server.getPrimaryService(uuid)
@@ -99,3 +100,8 @@ function getServiceName (uuid) {
             });
     }
 */
+
+
+export {
+    getServiceName
+};
