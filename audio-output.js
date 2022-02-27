@@ -53,10 +53,10 @@ class AudioOutput extends Component {
         if (this.state.carrierRunning) {
             this.carrierOscillator.stop();
             this.createCarrier();
-            this.setState({carrierRunning: false});
+            this.setState(prevState => ({...prevState, carrierRunning: false}));
         } else {
             this.carrierOscillator.start();
-            this.setState({carrierRunning: true});
+            this.setState(prevState => ({...prevState, carrierRunning: true}));
         }
 
     }
@@ -75,10 +75,10 @@ class AudioOutput extends Component {
         if (this.state.constantSourceRunning) {
             this.constantSource.stop();
             this.createConstantSource();
-            this.setState({constantSourceRunning: false});
+            this.setState(prevState => ({...prevState, constantSourceRunning: false}));
         } else {
             this.constantSource.start();
-            this.setState({constantSourceRunning: true});
+            this.setState(prevState => ({...prevState, constantSourceRunning: true}));
         }
     }
 
@@ -90,7 +90,7 @@ class AudioOutput extends Component {
     initNoise () {
         this.noise = new NoiseNode(this.ctx);
         this.noise.connect(this.modulatedGain);
-        this.setState({noiseInitialized: true});
+        this.setState(prevState => ({...prevState, noiseInitialized: true}));
     }
 
     initialize () {

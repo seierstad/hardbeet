@@ -45,9 +45,22 @@ function byteArray2String (byteArray) {
 */
 
 class Sensor extends Component {
-    constructor ({device, index, dataCallbackFn}) {
+    constructor ({device: {device, deviceIndex}, index, dataCallbackFn, functions = {}}) {
         super();
         this.index = index;
+
+        this.device = device;
+        this.deviceIndex = deviceIndex;
+
+        const {
+            registerSource,
+            registerDestination
+        } = functions;
+
+        this.functions = {
+            registerSource: registerSource.bind(this.deviceIndex),
+            registerDestination: registerDestination.bind(this.deviceIndex)
+        };
 
         this.dataCallbackFn = dataCallbackFn;
 
@@ -75,7 +88,9 @@ class Sensor extends Component {
             errorFn: this.serviceError
         }];
 
-        this.device = device;
+
+        this.functions = 
+
         this.device.addEventListener("advertisementreceived", event => console.log(`sensor ${this.index}: advertisement received: ${event}`));
         if (typeof this.device.watchAdvertisements === "function") {
             this.device.watchAdvertisements().then(
@@ -105,7 +120,6 @@ class Sensor extends Component {
                 ${services.length > 0 ? (html`
                     <div class="services">
                         ${services.map(service => {
-                            console.log(service.uuid);
                             if (typeof service.uuid === "string" && service.uuid.endsWith("-0000-1000-8000-00805f9b34fb")) {
                                 switch (parseInt(service.uuid.substring(4, 8), 16)) {
                                     case HEART_RATE_SERVICE_UUID:
@@ -124,7 +138,7 @@ class Sensor extends Component {
                             } else {
                                 switch (service.uuid) {
                                     case POLAR_SERVICE_UUID:
-                                        return html`<${PolarService} key=${service.uuid} service=${service} dataCallbackFn=${this.dataCallbackFn} />`;
+                                        return html`<${PolarService} key=${service.uuid} service=${service} functions=${this.functions} dataCallbackFn=${this.dataCallbackFn} />`;
                                 }
                             }
                         })}

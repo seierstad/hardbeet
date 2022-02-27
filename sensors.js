@@ -32,8 +32,8 @@ class Sensors extends Component {
             optionalServices: optionalServicesUUIDs
         }).then(
             device => {
-                this.dataFunctions.registerDevice("heart rate sensor", device.name);
-                this.setState({devices: [...this.state.devices, device]});
+                const deviceIndex = this.dataFunctions.registerDevice("heart rate sensor", device.name);
+                this.setState({devices: [...this.state.devices, {device, index: deviceIndex}]});
             },
             error => {
                 this.error("device request error: " + error);

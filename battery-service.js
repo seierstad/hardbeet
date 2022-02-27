@@ -54,7 +54,7 @@ class BatteryService extends Component {
     }
 
     set batteryLevel (batteryLevel) {
-        this.setState({batteryLevel});
+        this.setState(prevState => ({...prevState, batteryLevel}));
     }
 }
 
