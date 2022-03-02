@@ -1,12 +1,15 @@
 "use strict";
 import { html, Component, render } from "./preact-standalone.module.min.js";
 //import {combineReducers, compose, createStore} from "https://unpkg.com/redux@4.1.2/es/redux.mjs";
-//import {Provider} from "https://unpkg.com/react-redux";
+import {Provider} from "https://unpkg.com/react-redux";
 //import {createStore} from "https://unpkg.com/unistore/full/preact.umd.js";
 import Status, {LOGLEVEL} from "./status.js";
 import Sensors from "./sensors.js";
 import Midi from "./midi.js";
 import AudioOutput from "./audio-output.js";
+import {combineReducers, compose, createStore} from "./redux.mjs";
+
+
 
 const callbackFunctions = {
     ecg: [],
