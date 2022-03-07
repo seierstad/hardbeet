@@ -1,30 +1,40 @@
 "use strict";
-import {html, Component} from "./preact-standalone.module.min.js";
+import {html} from "./preact-standalone.module.min.js";
 import Sensor, {mainServiceUUID, optionalServicesUUIDs} from "./sensor.js";
 import PolarSensor from "./polar-sensor.js";
+import {ACTION as STATUS_ACTION} from "./status.js";
 
+let deviceCounter = -1;
 
-class Sensors extends Component {
-    constructor (props) {
-        super();
+const ACTION = {
+    ADD_SENSOR: Symbol("ADD_SENSOR")
+};
 
-        const {
-            bluetooth,
-            functions
-        } = props;
+const initialState = [];
 
-        this.bluetooth = bluetooth;
-        this.addSensor = this.addSensor.bind(this);
+const reducer = (state, action = {}) => {
+    const {type, payload} = action;
 
-        this.dataFunctions = functions;
-
-        this.state = {
-            devices: []
-        };
+    switch (type) {
+        case ACTION.ADD_SENSOR:
+            return [
+                ...state,
+                {device: payload.device, index: payload.index}
+            ];
+        default:
+            return state;
     }
+};
+
+function Sensors (props) {
+    const {
+        bluetoothAvailable,
+        devices = [],
+        dispatch
+    } = props;
 
 
-    addSensor () {
+    const addSensor = () => {
         navigator.bluetooth.requestDevice({
             filters: [
                 {services: [mainServiceUUID]}
@@ -32,26 +42,27 @@ class Sensors extends Component {
             optionalServices: optionalServicesUUIDs
         }).then(
             device => {
-                const deviceIndex = this.dataFunctions.registerDevice("heart rate sensor", device.name);
-                this.setState({devices: [...this.state.devices, {device, index: deviceIndex}]});
+                dispatch({type: ACTION.ADD_SENSOR, payload: {device, index: ++deviceCounter}});
             },
             error => {
-                this.error("device request error: " + error);
+                dispatch({type: STATUS_ACTION.ERROR, payload: {text: "device request error: " + error, timestamp: new Date()}});
             }
         );
-    }
+    };
 
-    render (props, state) {
-        const {bluetoothAvaliable} = props;
-        const {devices = []} = state;
-        return html`
-            <section>
-                <header><h2>sensors</h2></header>
-                ${devices.map((device, index) => device.name.startsWith("Polar") ? html`<${PolarSensor} device=${device} functions=${this.dataFunctions} index=${index} />` : html`<${Sensor} device=${device} functions=${this.dataFunctions} index=${index} />`)}
-                ${bluetoothAvaliable ? html`<button onClick=${this.addSensor}>add sensor</button>` : null}
-            </section>
-        `;
-    }
+    return html`
+        <section>
+            <header><h2>sensors</h2></header>
+            ${devices.map(({device, index}) => device.name.startsWith("Polar") ? html`<${PolarSensor} device=${device} functions=${this.dataFunctions} index=${index} />` : html`<${Sensor} device=${device} functions=${this.dataFunctions} index=${index} />`)}
+            ${bluetoothAvailable ? html`<button onClick=${addSensor}>add sensor</button>` : null}
+        </section>
+    `;
 }
 
 export default Sensors;
+
+export {
+    reducer,
+    ACTION,
+    initialState
+};

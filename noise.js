@@ -1,36 +1,7 @@
 "use strict";
-import {html, Component} from "./preact-standalone.module.min.js";
+import {html, useReducer, useEffect} from "./preact-standalone.module.min.js";
 
-class Toggle extends Component {
-
-    render (props) {
-        const {
-            name,
-            values = [],
-            defaultValue,
-            handler,
-            legend = name
-        } = props;
-
-        return html`
-            <fieldset>
-                <legend>${legend}</legend>
-                ${values.map(([value, label = value]) => html`
-                    <label>
-                        <span class="label-text">${label}</span>
-                        <input
-                            checked=${value === defaultValue}
-                            type="radio"
-                            name=${name}
-                            value=${value}
-                            onChange=${handler}
-                        />
-                    </label>
-                `)}
-            </fieldset>
-        `;
-    }
-}
+import Toggle from "./toggle.js";
 
 
 class NoiseNode extends AudioWorkletNode {
@@ -53,36 +24,56 @@ class NoiseNode extends AudioWorkletNode {
     }
 }
 
-class NoiseComponent extends Component {
-    constructor (props) {
-        super();
+const ACTION = {
+    TOGGLE: Symbol("NOISE_TOGGLE"),
+    COLOR: Symbol("NOISE_COLOR")
+};
 
-        const {noise} = props;
-        this.noise = noise;
-        this.toggleHandler = this.toggleHandler.bind(this);
-        this.colorHandler = this.colorHandler.bind(this);
-    }
+const initialState = {
+    toggle: "off",
+    color: "white"
+};
 
-    toggleHandler (event) {
-        this.noise.toggle = event.target.value;
+const reducer = (state, action = {}) => {
+    const {type, payload} = action;
+    switch (type) {
+        case ACTION.TOGGLE:
+            return {...state, toggle: payload};
+        case ACTION.COLOR:
+            return {...state, color: payload};
+        default:
+            return state;
     }
+};
 
-    colorHandler (event) {
-        this.noise.color = event.target.value;
-    }
 
-    render () {
-        return html`
-            <div class="noise">
-                <h5>noise</h5>
-                <${Toggle} name="toggle" values=${[["off"], ["on"]]} defaultValue="off" handler=${this.toggleHandler} />
-                <${Toggle} name="color" values=${[["white"], ["pink"]]} defaultValue="white" handler=${this.colorHandler} />
-            </div>
-        `;
-    }
+function Noise (props) {
+    const {noise} = props;
+    this.noise = noise;
+
+    const [state, dispatch] = useReducer(reducer, initialState);
+
+    useEffect(() => {
+        this.noise.toggle = state.toggle;
+    }, [state.toggle]);
+
+    useEffect(() => {
+        this.noise.color = state.color;
+    }, [state.color]);
+
+    return html`
+        <div class="noise">
+            <h5>noise</h5>
+            <${Toggle} name="toggle" values=${[["off"], ["on"]]} value=${state.toggle} defaultValue="off" dispatch=${dispatch} action=${ACTION.TOGGLE} />
+            <${Toggle} name="color" values=${[["white"], ["pink"]]} value=${state.color} defaultValue="white" dispatch=${dispatch} action=${ACTION.COLOR} />
+        </div>
+    `;
 }
 
 export {
     NoiseNode,
-    NoiseComponent
+    Noise,
+    reducer,
+    ACTION,
+    initialState
 };

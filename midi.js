@@ -10,12 +10,6 @@ class Midi extends Component {
     constructor (props) {
         super(props);
 
-        const {
-            log,
-            error
-        } = props;
-        this.log = log;
-        this.error = error;
         this.access = null;
         this.inputs = [];
         this.outputs = [];
@@ -133,12 +127,12 @@ class Midi extends Component {
 
     connectHandler () {
         this.setState({accessRequested: true});
-        //this.logger.log("Requesting access to MIDI.");
+        //console.logger.log("Requesting access to MIDI.");
         navigator.requestMIDIAccess({"sysex": true}).then(this.onAccess, this.onAccessFailure);
     }
 
     onAccessFailure (message) {
-        this.log("Failed to get MIDI access: " + message);
+        console.log("Failed to get MIDI access: " + message);
         this.setState({accessError: "Failed to get MIDI access: " + message});
     }
 
@@ -149,7 +143,7 @@ class Midi extends Component {
     }
 
     onAccess (access) {
-        this.log("MIDI access granted!");
+        console.log("MIDI access granted!");
         access.addEventListener("statechange", this.accessStateChangeHandler);
 
         const outputIterator = access.outputs.entries();

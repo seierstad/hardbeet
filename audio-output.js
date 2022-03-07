@@ -1,50 +1,102 @@
 "use strict";
-import {html, Component} from "./preact-standalone.module.min.js";
-import {NoiseNode, NoiseComponent} from "./noise.js";
+import {html, useEffect, useState, useReducer} from "./preact-standalone.module.min.js";
+import {NoiseNode, Noise, initialState as initialNoiseState} from "./noise.js";
+import Toggle from "./toggle.js";
 
+const ACTION = {
+    AUDIO_CARRIER_TOGGLE: Symbol("AUDIO_CARRIER_TOGGLE"),
+    AUDIO_CONSTANT_TOGGLE: Symbol("AUDIO_CONSTANT_TOGGLE")
+};
 
-class AudioOutput extends Component {
-    constructor () {
-        super();
-        this.ctx = null;
-        this.noise = null;
-        this.carrierFrequency = 440;
-        this.heartRate = 60;
-        this.previousTimestamp = null;
+const initialState = {
+    carrier: {
+        toggle: "off",
+        frequency: 440
+    },
+    constant: {
+        toggle: "off"
+    },
+    noise: initialNoiseState
+};
 
-        this._modulatorParameters = {};
-        this.pingParameters = {};
+const reducer = (state, action = {}) => {
+    const {type, payload} = action;
 
-        this.toggleCarrierHandler = this.toggleCarrierHandler.bind(this);
-        this.initialize = this.initialize.bind(this);
-        this.addModulationData = this.addModulationData.bind(this);
-        this.initNoise = this.initNoise.bind(this);
-        this.toggleConstantSource = this.toggleConstantSource.bind(this);
+    switch (type) {
 
-        this.state = {
-            carrierRunning: false,
-            constantSourceRunning: false,
-            noiseInitialized: false
-        };
+        case ACTION.AUDIO_CARRIER_TOGGLE:
+            return {
+                ...state,
+                carrier: {
+                    ...state.carrier,
+                    toggle: payload
+                }
+            };
+
+        case ACTION.AUDIO_CONSTANT_TOGGLE:
+            return {
+                ...state,
+                constant: {
+                    ...state.constant,
+                    toggle: payload
+                }
+            };
+
+        default:
+            return state;
     }
+};
 
-    render (props, state) {
-        const {
-            carrierRunning,
-            constantSourceRunning,
-            noiseInitialized
-        } = state;
+function AudioOutput (props) {
 
-        return html`
-            <section>
-                <header><h2>audio output</h2></header>
-                <button onClick=${this.toggleCarrierHandler}>${carrierRunning ? "stop" : "start"} carrier</button>
-                <button onClick=${this.toggleConstantSource}>${constantSourceRunning ? "stop" : "start"} constant source</button>
-                ${noiseInitialized ? html`<${NoiseComponent} noise=${this.noise} />` : null}
-            </section>
-        `;
-    }
+    const [state, dispatch] = useReducer(reducer, initialState);
+    useEffect(() => {
+        console.log("carrier toggled");
+    }, [state.carrier.toggle]);
 
+    useEffect(() => {
+        console.log("constant toggled");
+    }, [state.constant.toggle]);
+
+    useEffect(() => {
+        console.log("listen carefully - I will say this önly once");
+    }, []);
+
+    /*
+    this.ctx = null;
+    this.noise = null;
+    this.previousTimestamp = null;
+
+    this.pingParameters = {};
+    */
+
+    const {
+        carrier: {
+            toggle: carrierToggle
+        },
+        constant: {
+            toggle: constantToggle
+        },
+        noiseInitialized
+    } = state;
+
+    return html`
+        <section>
+            <header><h2>audio output</h2></header>
+            <div class="carrier">
+                <h5>carrier</h5>
+                <${Toggle} name="toggle-carrier" legend="toggle" options=${[["off"], ["on"]]} selected=${carrierToggle} default="off" dispatch=${dispatch} action=${ACTION.AUDIO_CARRIER_TOGGLE} />
+            </div>
+            <div class="constant">
+                <h5>constant</h5>
+                <${Toggle} name="toggle-constant" legend="toggle" options=${[["off"], ["on"]]} selected=${constantToggle} default="off" dispatch=${dispatch} action=${ACTION.AUDIO_CONSTANT_TOGGLE} />
+            </div>
+            ${noiseInitialized ? html`<${Noise} noise=${this.noise} />` : null}
+        </section>
+    `;
+}
+
+/*
     toggleCarrierHandler () {
         if (this.ctx === null) {
             this.initialize();
@@ -167,5 +219,6 @@ class AudioOutput extends Component {
         this.heartRate = heartRate;
     }
 }
+*/
 
 export default AudioOutput;
