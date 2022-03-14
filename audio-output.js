@@ -1,6 +1,6 @@
 "use strict";
 import {html, useEffect, useState} from "./preact-standalone.module.min.js";
-import {NoiseNode, Noise, reducer as noiseReducer, ACTION as NOISE_ACTION, initialState as initialNoiseState} from "./noise.js";
+import Noise, {initialState as initialNoiseState, ACTION as NOISE_ACTION, reducer as noiseReducer} from "./audio-noise.js";
 import Carrier, {initialState as initialCarrierState, ACTION as CARRIER_ACTION, reducer as carrierReducer} from "./audio-carrier.js";
 import Constant, {initialState as initialConstantState, ACTION as CONSTANT_ACTION, reducer as constantReducer} from "./audio-constant.js";
 
@@ -42,47 +42,25 @@ function AudioOutput (props) {
         modulatedGain.connect(masterGain).connect(ctx.destination);
     }, []);
 
-    useEffect(() => {
-        console.log("carrier toggled");
-    }, [state.carrier.toggle]);
-
-    useEffect(() => {
-        console.log("constant toggled");
-    }, [state.constant.toggle]);
-
-
     /*
     this.previousTimestamp = null;
     */
-
-    const {
-        noiseInitialized
-    } = state;
-
 
     return html`
         <section>
             <header><h2>audio output</h2></header>
             <${Carrier} dispatch=${dispatch} state=${state.carrier} ctx=${ctx} destination=${modulatedGain} />
             <${Constant} dispatch=${dispatch} state=${state.constant} ctx=${ctx} destination=${modulatedGain} />
-            ${noiseInitialized ? html`<${Noise} noise=${this.noise} />` : null}
+            <${Noise} dispatch=${dispatch} state=${state.noise} ctx=${ctx} destination=${modulatedGain} />
         </section>
     `;
 }
 
 /*
 
-    initNoise () {
-        this.noise = new NoiseNode(this.ctx);
-        this.noise.connect(this.modulatedGain);
-        this.setState(prevState => ({...prevState, noiseInitialized: true}));
-    }
-
     initialize () {
         if (this.ctx === null) {
             this.previousTimestamp = this.ctx.currentTime;
-
-            this.createCarrier();
 
             this.pingOscillator = this.ctx.createOscillator();
             this.pingOscillator.start();
@@ -93,14 +71,12 @@ function AudioOutput (props) {
                 .connect(this.pingGain)
                 .connect(this.masterGain);
 
-            this.noiseGain = this.ctx.createGain();
             this.noiseGain.connect(this.modulatedGain);
 
             this.modulatedGain
                 .connect(this.masterGain)
                 .connect(this.ctx.destination);
 
-            this.ctx.audioWorklet.addModule("noise-processor.js").then(() => this.initNoise());
         }
     }
 
