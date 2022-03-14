@@ -1,42 +1,30 @@
 "use strict";
-import {html, Component} from "./preact-standalone.module.min.js";
+import {html, useState} from "./preact-standalone.module.min.js";
 
-class MidiPort extends Component {
-    constructor (props) {
-        super();
-        const {
-            port
-        } = props;
-        this.port = port;
+function MidiPort (props) {
+    const {port, children} = props;
 
-        this.state = {
-            open: false
-        };
+    const [open, setOpen] = useState(false);
 
-        this.toggleOpenHandler = this.toggleOpenHandler.bind(this);
-    }
-
-    render ({port}, {open}) {
-        return html`
-            <fieldset>
-                <legend>${port.manufacturer} ${port.name}</legend>
-                <button onClick=${this.toggleOpenHandler}>${!open ? "open" : "close"}</button>
-                ${this.props.children}
-            </fieldset>
-        `;
-    }
-
-    toggleOpenHandler () {
-        if (!this.state.open) {
-            this.port.open().then((status) => {
-                this.setState({open: true});
+    const toggleOpenHandler = () => {
+        if (!open) {
+            port.open().then(() => {
+                setOpen(true);
             });
         } else {
-            this.port.close().then((status) => {
-                this.setState({open: false});
+            port.close().then(() => {
+                setOpen(false);
             });
         }
-    }
+    };
+
+    return html`
+        <fieldset>
+            <legend>${port.manufacturer} ${port.name}</legend>
+            <button onClick=${toggleOpenHandler}>${!open ? "open" : "close"}</button>
+            ${children}
+        </fieldset>
+    `;
 }
 
 export default MidiPort;

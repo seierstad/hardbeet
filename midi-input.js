@@ -1,13 +1,9 @@
 "use strict";
-
+import {MESSAGE_TYPE} from "./midi-constants.js";
 import MidiPort from "./midi-port.js";
 
-class MidiInput extends MidiPort {
-    constructor (port) {
-        super(port);
-    }
-
+function MidiInput (props) {
+    return MidiPort(props);
 }
-
 
 export default MidiInput;

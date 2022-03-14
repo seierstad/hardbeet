@@ -37,7 +37,6 @@ function AudioOutput (props) {
     const [modulatedGain] = useState(ctx.createGain());
 
     useEffect(() => {
-        console.log("listen carefully - I will say this önly once: initialize context, carrier & noise!");
         modulatedGain.gain.value = 0.4;
         modulatedGain.connect(masterGain).connect(ctx.destination);
     }, []);

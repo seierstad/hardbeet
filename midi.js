@@ -1,163 +1,119 @@
 "use strict";
-import {html, Component} from "./preact-standalone.module.min.js";
-import {MESSAGE_TYPE} from "./midi-constants.js";
+import {html, useState, useEffect} from "./preact-standalone.module.min.js";
+import {ACTION as STATUS_ACTION} from "./status.js";
 
 import MidiInput from "./midi-input.js";
 import MidiOutput from "./midi-output.js";
 
+const initialState = {
+    inputs: [],
+    outputs: []
+};
 
-class Midi extends Component {
-    constructor (props) {
-        super(props);
+const ACTION = {
+    ADD_INPUT_PORT: Symbol("ADD_INPUT_PORT"),
+    ADD_OUTPUT_PORT: Symbol("ADD_OUTPUT_PORT")
+};
 
-        this.access = null;
-        this.inputs = [];
-        this.outputs = [];
-        this._samplerate = null;
-        this.samplerateChanged = false;
-        this.buffer = [];
+const reducer = (state, action = {}) => {
+    const {type, payload} = action;
 
-        this.addModulationData = this.addModulationData.bind(this);
-        this.checkboxHandler = this.checkboxHandler.bind(this);
-        this.connectHandler = this.connectHandler.bind(this);
-        this.onAccess = this.onAccess.bind(this);
-        this.onAccessFailure = this.onAccessFailure.bind(this);
-        this.sendPitch = this.sendPitch.bind(this);
-        this.playBuffer = this.playBuffer.bind(this);
-
-        this.interval = null;
-        this.state = {
-            access: null,
-            accessRequested: false,
-            accessError: null
-        };
+    switch (type) {
+        case ACTION.ADD_INPUT_PORT:
+            return {
+                ...state,
+                inputs: [
+                    ...state.inputs,
+                    payload
+                ]
+            };
     }
 
-    render (props, state) {
-        const {
-            access,
-            accessRequested,
-            accessError
-        } = state;
+    return state;
+};
 
-        return (html`
-            <section id="midi">
-                <header><h2>MIDI</h2></header>
-                ${access ? html`
-                    <fieldset>
-                        <legend>inputs</legend>
-                        ${this.inputs.map((port, index) => html`<${MidiInput} port=${port} key=${index + "_" + port.id}/>`)}
-                    </fieldset>
-                    <fieldset>
-                        <legend>outputs</legend>
-                        ${this.outputs.map((port, index) => html`<${MidiOutput} port=${port} key=${index + "_" + port.id}/>`)}
-                    </fieldset>
-                ` : html`
-                    <button disabled=${accessRequested} onClick=${this.connectHandler}>connect midi</button>
-                `}
-                ${accessError ? html`<span>${accessError}</span>` : null}
-            </section>
-        `);
-    }
 
-    playBuffer () {
-        if (this.buffer.length > 0) {
-            this.sendPitch(this.buffer.shift());
+function Midi (props) {
+    const {state, dispatch} = props;
+    const [accessRequested, setAccessRequested] = useState(false);
+    const [access, setAccess] = useState(null);
+    const [accessError, setAccessError] = useState(null);
+
+    useEffect(() => {
+        if (accessRequested) {
+            navigator.requestMIDIAccess({"sysex": true}).then(setAccess, setAccessError);
+            dispatch({type: STATUS_ACTION.LOG, payload: {text: "Requesting MIDI access", timestamp: new Date()}});
         }
-        if (this.samplerateChanged) {
-            clearInterval(this.interval);
-            this.interval = setInterval(this.playBuffer, 1000 / this.samplerate);
-            this.samplerateChanged = false;
+    }, [accessRequested]);
+
+    useEffect(() => {
+        if (accessError !== null) {
+            dispatch({
+                type: STATUS_ACTION.ERROR,
+                payload: {
+                    text: `MIDI access error: ${accessError.name} - ${accessError.message} (code ${accessError.code})`,
+                    timestamp: new Date()
+                }
+            });
+            setAccessRequested(false);
         }
-    }
+    }, [accessError]);
 
-    set samplerate (samplerate) {
-        if (samplerate !== this._samplerate) {
-            this._samplerate = samplerate;
-            this.samplerateChanged = true;
+    const accessStateChangeHandler = (event) => {
+        console.log({midi_statechange: event});
+    };
 
-        }
-        if (this.interval === null) {
-            this.interval = setInterval(this.playBuffer, 1000 / samplerate);
-        }
-    }
+    useEffect(() => {
+        if (access !== null) {
+            dispatch({type: STATUS_ACTION.LOG, payload: {text: "MIDI access granted!", timestamp: new Date()}});
+            access.addEventListener("statechange", accessStateChangeHandler);
 
-    get samplerate () {
-        return this._samplerate;
-    }
-
-    sendPitch (value) {
-        const pitchValue = Math.floor(0x2000 + value * 0x1fff);
-        const mvb = pitchValue >> 7;
-        const lvb = pitchValue & 0x7f;
-        this.outputs.forEach(port => {
-            port.port.send([MESSAGE_TYPE.PITCH_BEND, lvb, mvb]);
-        });
-    }
-
-    addModulationData (data, parameters = {}) {
-        this.buffer.push(...data.map(([value]) => value));
-        const {
-            samplerate = 130
-        } = parameters;
-
-        if (this.samplerate !== samplerate) {
-            this.samplerate = samplerate;
-        }
-    }
-
-    checkboxHandler (event) {
-        const {
-            target: {
-                value,
-                checked
-            } = {}
-        } = event;
-        const port = this.outputs.find(p => p.port.id === value);
-        const velocity = 127;
-        const note = 65;
-        if (port) {
-            if (checked) {
-                port.port.open().then(p => p.send([MESSAGE_TYPE.NOTE_ON, note, velocity]));
-            } else {
-                port.port.send([MESSAGE_TYPE.NOTE_OFF, note, velocity]);
+            const outputIterator = access.outputs.entries();
+            for (let [id, port] of outputIterator) {
+                dispatch({type: ACTION.ADD_OUTPUT_PORT, payload: {id, name: port.name}});
             }
+
+            const inputIterator = access.inputs.entries();
+            for (let [id, port] of inputIterator) {
+                dispatch({type: ACTION.ADD_INPUT_PORT, payload: {id, name: port.name}});
+            }
+            return () => {
+                access.removeEventListener("statechange", accessStateChangeHandler);
+            };
         }
-    }
+    }, [access]);
 
-    connectHandler () {
-        this.setState({accessRequested: true});
-        //console.logger.log("Requesting access to MIDI.");
-        navigator.requestMIDIAccess({"sysex": true}).then(this.onAccess, this.onAccessFailure);
-    }
+    this._samplerate = null;
+    this.samplerateChanged = false;
+    this.buffer = [];
+    this.interval = null;
 
-    onAccessFailure (message) {
-        console.log("Failed to get MIDI access: " + message);
-        this.setState({accessError: "Failed to get MIDI access: " + message});
-    }
+    return html`
+        <section id="midi">
+            <header><h2>MIDI</h2></header>
+            ${state.inputs.map(port => html`<span>${port.id} - ${port.name}</span>`)}
+            ${access ? html`
+                <fieldset>
+                    <legend>inputs</legend>
+                    ${Array.from(access.inputs).map(([id, port]) => html`<${MidiInput} port=${port} key=${id}/>`)}
+                </fieldset>
+                <fieldset>
+                    <legend>outputs</legend>
+                    ${Array.from(access.outputs).map(([id, port]) => html`<${MidiOutput} port=${port} key=${id}/>`)}
+                </fieldset>
+            ` : html`
+                <button disabled=${accessRequested} onClick=${() => setAccessRequested(true)}>${accessError ? "try again" : "connect midi"}</button>
+            `}
+        </section>
+    `;
 
-
-    removeConnectButton () {
-        this.connectButton.removeEventListener("click", this.connectHandler);
-        this.connectButton.parentNode.removeChild(this.connectButton);
-    }
-
-    onAccess (access) {
-        console.log("MIDI access granted!");
-        access.addEventListener("statechange", this.accessStateChangeHandler);
-
-        const outputIterator = access.outputs.entries();
-        for (let [, port] of outputIterator) {
-            this.outputs.push(port);
-        }
-
-        const inputIterator = access.inputs.entries();
-        for (let [, port] of inputIterator) {
-            this.inputs.push(port);
-        }
-
-        this.setState({access});
-    }
 }
 
+
 export default Midi;
+
+export {
+    initialState,
+    ACTION,
+    reducer
+};

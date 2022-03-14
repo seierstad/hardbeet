@@ -1,27 +1,20 @@
 "use strict";
-import { html, Component, render, useReducer, useEffect } from "./preact-standalone.module.min.js";
+import { html, render, useReducer, useEffect } from "./preact-standalone.module.min.js";
 import Status, {ACTION as STATUS_ACTION, LOGLEVEL, reducer as statusReducer, initialState as statusInitialState} from "./status.js";
 import Sensors, {reducer as devicesReducer, initialState as devicesInitialState} from "./sensors.js";
-import Midi from "./midi.js";
+import Midi, {initialState as midiInitialState, ACTION as MIDI_ACTION, reducer as midiReducer} from "./midi.js";
 import AudioOutput, {reducer as audioReducer, ACTION as AUDIO_ACTION, initialState as audioInitialState} from "./audio-output.js";
 
-const callbackFunctions = {
-    ecg: [],
-    accelerometer: [],
-    heartRate: []
-};
 
-/*
-const defaultState = {
-    sources: {
-        sensors: [],
-        midi: []
-    },
-    destinations: {
-        midi: []
-    }
+const initialState = {
+    devices: devicesInitialState,
+    status: statusInitialState,
+    audio: audioInitialState,
+    midi: midiInitialState,
+    bluetoothAvailable: null,
+    midiAvailable: null,
+    interactive: false
 };
-*/
 
 const ACTION = {
     SET_INTERACTIVE: Symbol("SET_INTERACTIVE"),
@@ -77,18 +70,12 @@ const reducer = (state, action = {}) => {
         ...rootReducer(state, action),
         status: statusReducer(state.status, action),
         devices: devicesReducer(state.devices, action),
-        audio: audioReducer(state.audio, action)
+        audio: audioReducer(state.audio, action),
+        midi: midiReducer(state.midi, action)
     };
 };
 
-const initialState = {
-    devices: devicesInitialState,
-    status: statusInitialState,
-    audio: audioInitialState,
-    bluetoothAvailable: null,
-    midiAvailable: null,
-    interactive: false
-};
+
 
 function Hardbeet () {
     const [state, dispatch] = useReducer(reducer, initialState);
@@ -134,7 +121,6 @@ function Hardbeet () {
     }, [state.bluetoothAvailable]);
 
     useEffect(() => {
-        log("midi useEffect");
         if (state.midiAvailable !== null) {
             if (state.midiAvailable) {
                 log("MIDI is available.");
@@ -161,9 +147,9 @@ function Hardbeet () {
     return html`
         <main onClick=${firstClickHandler}>
             <${Status} messages=${status}/>
-            ${devices.map(({device, index}) => html`<p>${device.name}, ${device.type}</p>`)}
+            ${devices.map(({device}) => html`<p>${device.name}, ${device.type}</p>`)}
             <${Sensors} bluetoothAvailable=${bluetoothAvailable} bluetooth=${navigator.bluetooth} devices=${devices} dispatch=${dispatch} functions=${this.dataFunctions} />
-            ${midiAvailable ? html`<${Midi} dispatch=${dispatch} />` : null}
+            ${midiAvailable ? html`<${Midi} dispatch=${dispatch} state=${state.midi} />` : null}
             ${interactive ? html`<${AudioOutput} dispatch=${dispatch} state=${state.audio}/>` : null}
         </main>
     `;
