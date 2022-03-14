@@ -3,7 +3,7 @@ import { html, Component, render, useReducer, useEffect } from "./preact-standal
 import Status, {ACTION as STATUS_ACTION, LOGLEVEL, reducer as statusReducer, initialState as statusInitialState} from "./status.js";
 import Sensors, {reducer as devicesReducer, initialState as devicesInitialState} from "./sensors.js";
 import Midi from "./midi.js";
-import AudioOutput from "./audio-output.js";
+import AudioOutput, {reducer as audioReducer, ACTION as AUDIO_ACTION, initialState as audioInitialState} from "./audio-output.js";
 
 const callbackFunctions = {
     ecg: [],
@@ -26,17 +26,32 @@ const defaultState = {
 const ACTION = {
     SET_INTERACTIVE: Symbol("SET_INTERACTIVE"),
     BT_AVAILABILITY: Symbol("BT_AVAILABILITY"),
-    MIDI_AVAILABILITY: Symbol("MIDI_AVAILABILITY")
+    MIDI_AVAILABILITY: Symbol("MIDI_AVAILABILITY"),
+    TEST_1: Symbol("TEST_1"),
+    TEST_2: Symbol("TEST_2")
 };
 
 const rootReducer = (state, action = {}) => {
-    const {type, payload} = action;
+    const {type, payload = {}} = action;
+    const {audioContext = false} = payload;
 
     switch (type) {
+        case ACTION.TEST_1:
+            console.log("test 1");
+            return {
+                ...state
+            };
+
+        case ACTION.TEST_2:
+            console.log("test 2");
+            return {
+                ...state
+            };
 
         case ACTION.SET_INTERACTIVE:
             return {
                 ...state,
+                audioContext,
                 interactive: true
             };
 
@@ -61,13 +76,15 @@ const reducer = (state, action = {}) => {
     return {
         ...rootReducer(state, action),
         status: statusReducer(state.status, action),
-        devices: devicesReducer(state.devices, action)
+        devices: devicesReducer(state.devices, action),
+        audio: audioReducer(state.audio, action)
     };
 };
 
 const initialState = {
     devices: devicesInitialState,
     status: statusInitialState,
+    audio: audioInitialState,
     bluetoothAvailable: null,
     midiAvailable: null,
     interactive: false
@@ -102,9 +119,11 @@ function Hardbeet () {
 
 
     useEffect(() => {
+        dispatch({type: ACTION.TEST_1});
         if (state.interactive) {
             log("interactive!");
         }
+        dispatch({type: ACTION.TEST_2});
     }, [state.interactive]);
 
     useEffect(() => {
@@ -134,6 +153,7 @@ function Hardbeet () {
     const {
         devices,
         status,
+        interactive,
         bluetoothAvailable,
         midiAvailable
     } = state;
@@ -144,7 +164,7 @@ function Hardbeet () {
             ${devices.map(({device, index}) => html`<p>${device.name}, ${device.type}</p>`)}
             <${Sensors} bluetoothAvailable=${bluetoothAvailable} bluetooth=${navigator.bluetooth} devices=${devices} dispatch=${dispatch} functions=${this.dataFunctions} />
             ${midiAvailable ? html`<${Midi} dispatch=${dispatch} />` : null}
-            <${AudioOutput} />
+            ${interactive ? html`<${AudioOutput} dispatch=${dispatch} state=${state.audio}/>` : null}
         </main>
     `;
 }

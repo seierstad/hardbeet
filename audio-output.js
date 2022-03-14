@@ -1,55 +1,47 @@
 "use strict";
-import {html, useEffect, useState, useReducer} from "./preact-standalone.module.min.js";
-import {NoiseNode, Noise, initialState as initialNoiseState} from "./noise.js";
-import Toggle from "./toggle.js";
+import {html, useEffect, useState} from "./preact-standalone.module.min.js";
+import {NoiseNode, Noise, reducer as noiseReducer, ACTION as NOISE_ACTION, initialState as initialNoiseState} from "./noise.js";
+import Carrier, {initialState as initialCarrierState, ACTION as CARRIER_ACTION, reducer as carrierReducer} from "./audio-carrier.js";
+import Constant, {initialState as initialConstantState, ACTION as CONSTANT_ACTION, reducer as constantReducer} from "./audio-constant.js";
 
 const ACTION = {
-    AUDIO_CARRIER_TOGGLE: Symbol("AUDIO_CARRIER_TOGGLE"),
-    AUDIO_CONSTANT_TOGGLE: Symbol("AUDIO_CONSTANT_TOGGLE")
+    ...CARRIER_ACTION,
+    ...CONSTANT_ACTION,
+    ...NOISE_ACTION
 };
 
 const initialState = {
-    carrier: {
-        toggle: "off",
-        frequency: 440
-    },
-    constant: {
-        toggle: "off"
-    },
+    carrier: initialCarrierState,
+    constant: initialConstantState,
     noise: initialNoiseState
 };
 
 const reducer = (state, action = {}) => {
-    const {type, payload} = action;
 
-    switch (type) {
-
-        case ACTION.AUDIO_CARRIER_TOGGLE:
-            return {
-                ...state,
-                carrier: {
-                    ...state.carrier,
-                    toggle: payload
-                }
-            };
-
-        case ACTION.AUDIO_CONSTANT_TOGGLE:
-            return {
-                ...state,
-                constant: {
-                    ...state.constant,
-                    toggle: payload
-                }
-            };
-
-        default:
-            return state;
+    if (Object.values(ACTION).indexOf(action.type) === -1) {
+        return state;
     }
+
+    return {
+        carrier: carrierReducer(state.carrier, action),
+        constant: constantReducer(state.constant, action),
+        noise: noiseReducer(state.noise, action)
+    };
 };
 
 function AudioOutput (props) {
+    const {dispatch, state} = props;
 
-    const [state, dispatch] = useReducer(reducer, initialState);
+    const [ctx] = useState(new AudioContext());
+    const [masterGain] = useState(ctx.createGain());
+    const [modulatedGain] = useState(ctx.createGain());
+
+    useEffect(() => {
+        console.log("listen carefully - I will say this önly once: initialize context, carrier & noise!");
+        modulatedGain.gain.value = 0.4;
+        modulatedGain.connect(masterGain).connect(ctx.destination);
+    }, []);
+
     useEffect(() => {
         console.log("carrier toggled");
     }, [state.carrier.toggle]);
@@ -58,86 +50,27 @@ function AudioOutput (props) {
         console.log("constant toggled");
     }, [state.constant.toggle]);
 
-    useEffect(() => {
-        console.log("listen carefully - I will say this önly once");
-    }, []);
 
     /*
-    this.ctx = null;
-    this.noise = null;
     this.previousTimestamp = null;
-
-    this.pingParameters = {};
     */
 
     const {
-        carrier: {
-            toggle: carrierToggle
-        },
-        constant: {
-            toggle: constantToggle
-        },
         noiseInitialized
     } = state;
+
 
     return html`
         <section>
             <header><h2>audio output</h2></header>
-            <div class="carrier">
-                <h5>carrier</h5>
-                <${Toggle} name="toggle-carrier" legend="toggle" options=${[["off"], ["on"]]} selected=${carrierToggle} default="off" dispatch=${dispatch} action=${ACTION.AUDIO_CARRIER_TOGGLE} />
-            </div>
-            <div class="constant">
-                <h5>constant</h5>
-                <${Toggle} name="toggle-constant" legend="toggle" options=${[["off"], ["on"]]} selected=${constantToggle} default="off" dispatch=${dispatch} action=${ACTION.AUDIO_CONSTANT_TOGGLE} />
-            </div>
+            <${Carrier} dispatch=${dispatch} state=${state.carrier} ctx=${ctx} destination=${modulatedGain} />
+            <${Constant} dispatch=${dispatch} state=${state.constant} ctx=${ctx} destination=${modulatedGain} />
             ${noiseInitialized ? html`<${Noise} noise=${this.noise} />` : null}
         </section>
     `;
 }
 
 /*
-    toggleCarrierHandler () {
-        if (this.ctx === null) {
-            this.initialize();
-        }
-
-        if (this.state.carrierRunning) {
-            this.carrierOscillator.stop();
-            this.createCarrier();
-            this.setState(prevState => ({...prevState, carrierRunning: false}));
-        } else {
-            this.carrierOscillator.start();
-            this.setState(prevState => ({...prevState, carrierRunning: true}));
-        }
-
-    }
-
-    createCarrier () {
-        this.carrierOscillator = this.ctx.createOscillator();
-        this.carrierOscillator.frequency.value = this.carrierFrequency;
-        this.carrierOscillator.connect(this.modulatedGain);
-    }
-
-
-    toggleConstantSource () {
-        if (this.ctx === null) {
-            this.initialize();
-        }
-        if (this.state.constantSourceRunning) {
-            this.constantSource.stop();
-            this.createConstantSource();
-            this.setState(prevState => ({...prevState, constantSourceRunning: false}));
-        } else {
-            this.constantSource.start();
-            this.setState(prevState => ({...prevState, constantSourceRunning: true}));
-        }
-    }
-
-    createConstantSource () {
-        this.constantSource = this.ctx.createConstantSource();
-        this.constantSource.connect(this.modulatedGain);
-    }
 
     initNoise () {
         this.noise = new NoiseNode(this.ctx);
@@ -147,15 +80,8 @@ function AudioOutput (props) {
 
     initialize () {
         if (this.ctx === null) {
-            this.ctx = new AudioContext();
             this.previousTimestamp = this.ctx.currentTime;
 
-            this.masterGain = this.ctx.createGain();
-
-            this.modulatedGain = this.ctx.createGain();
-            this.modulatedGain.gain.value = 0.4;
-
-            this.createConstantSource();
             this.createCarrier();
 
             this.pingOscillator = this.ctx.createOscillator();
@@ -222,3 +148,9 @@ function AudioOutput (props) {
 */
 
 export default AudioOutput;
+
+export {
+    ACTION,
+    initialState,
+    reducer
+};
