@@ -1,13 +1,13 @@
 "use strict";
 
 import {html, Component} from "./preact-standalone.module.min.js";
-import Service from "./service.js";
 
 import {
     POLAR_MEASUREMENT_DATA_SERVICE_UUID,
     POLAR_UUID1,
     POLAR_H10_UNDOCUMENTED_SERVICE
 } from "./polar-codes.js";
+import {ACTION as STATUS_ACTION} from "./status.js";
 
 import UserDataService, {UUID as USER_DATA_SERVICE_UUID} from "./service-user-data.js";
 import BatteryService, {UUID as BATTERY_SERVICE_UUID} from "./service-battery.js";
@@ -45,10 +45,11 @@ function byteArray2String (byteArray) {
 */
 
 class Sensor extends Component {
-    constructor ({device, index, functions = {}}) {
+    constructor ({device, index, functions = {}, dispatch}) {
         super();
         this.index = index;
 
+        this.dispatch = dispatch;
         this.device = device;
 
         const {
@@ -89,10 +90,8 @@ class Sensor extends Component {
         this.device.addEventListener("advertisementreceived", event => console.log(`sensor ${this.index}: advertisement received: ${event}`));
         if (typeof this.device.watchAdvertisements === "function") {
             this.device.watchAdvertisements().then(
-                function () {
-                    console.log(`sensor ${index}: watching advertisements`);
-                },
-                error => this.logger.log("device watchAdvertisements error: " + error)
+                () => console.log(`sensor ${index}: watching advertisements`),
+                error => this.dispatch({type: STATUS_ACTION.ERROR, payload: {text: "device watchAdvertisements error: " + error, timestamp: new Date()}})
             );
         }
 
@@ -152,8 +151,8 @@ class Sensor extends Component {
     }
 
     handleGATTServerDisconnected (event) {
-        this.logger.log("GATT SERVER DISCONNECTED!!!!!!!!!!");
-        this.logger.log({event});
+        this.dispatch({type: STATUS_ACTION.LOG, payload: {text: "GATT SERVER DISCONNECTED!!!!!!!!!!" + event, timestamp: new Date()}});
+        console.log({event});
     }
 
 
@@ -171,7 +170,7 @@ class Sensor extends Component {
     }
 
     serviceError (error) {
-        this.logger.log(`${this.index}: user data service error: ${error}`);
+        this.dispatch({type: STATUS_ACTION.ERROR, payload: {text: `${this.index}: user data service error: ${error}`, timestamp: new Date()}});
     }
 
     logService (service) {

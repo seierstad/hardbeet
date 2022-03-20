@@ -59,7 +59,7 @@ function Sensors (props) {
     return html`
         <section>
             <header><h2>sensors</h2></header>
-            ${devices.map(({device, index}) => device.name.startsWith("Polar") ? html`<${PolarSensor} device=${device} functions=${dataFunctions} index=${index} />` : html`<${Sensor} device=${device} functions=${dataFunctions} index=${index} />`)}
+            ${devices.map(({device, index}) => device.name.startsWith("Polar") ? html`<${PolarSensor} device=${device} dispatch=${dispatch} functions=${dataFunctions} index=${index} />` : html`<${Sensor} device=${device} dispatch=${dispatch} functions=${dataFunctions} index=${index} />`)}
             ${bluetoothAvailable ? html`<button onClick=${addSensor}>add sensor</button>` : null}
         </section>
     `;

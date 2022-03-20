@@ -1,6 +1,6 @@
 "use strict";
 
-import {html, Component} from "./preact-standalone.module.min.js";
+import {html, useState, useEffect} from "./preact-standalone.module.min.js";
 import Service from "./service.js";
 import {GATT_SERVICE_UUID} from "./GATT_constants.js";
 
@@ -61,122 +61,94 @@ function parseHeartRate (data) {
 }
 
 
-class HeartRateService extends Component {
-    constructor ({service, dataCallbackFn = () => null}) {
-        super();
+function HeartRateService (props) {
+    const {service} = props;
+    const [heartRateCharacteristic, setHeartRateCharacteristic] = useState(null);
+    const [heartRate, setHeartRate] = useState(null);
 
-        this.service = service;
-        this.dataCallbackFn = dataCallbackFn;
+    const [sensorLocationCharacteristic, setSensorLocationCharacteristic] = useState(null);
+    const [sensorLocation, setSensorLocation] = useState(null);
 
-        this.heartRateCharacteristic = null;
-        this.handleBodySensorLocationCharacteristic = this.handleBodySensorLocationCharacteristic.bind(this);
-        this.handleHeartRateMeasurementCharacteristic = this.handleHeartRateMeasurementCharacteristic.bind(this);
-        this.heartRateChangedHandler = this.heartRateChangedHandler.bind(this);
+    const [rrIntervals, setRRIntervals] = useState(null);
+    const [contactDetected, setContactDetected] = useState(null);
+    const [energyExpended, setEnergyExpended] = useState(null);
 
-        this.state = {
-            bodySensorLocationInitialized: false,
-            heartRateMeasurementInitialized: false,
-            heartRate: null,
-            location: null,
-            rrIntervals: null,
-            contactDetected: null,
-            energyExpended: null
-        };
 
-    }
+    useEffect(() => {
+        (async function () {
+            await Promise.all([
+                service.getCharacteristic("body_sensor_location").then(characteristic => setSensorLocationCharacteristic(characteristic)),
+                service.getCharacteristic("heart_rate_measurement").then(characteristic => setHeartRateCharacteristic(characteristic))
+            ]);
+        })();
+    }, []);
 
-    componentDidMount () {
-        this.initCharacteristics();
-    }
-
-    render () {
-        const {
-            bodySensorLocationInitialized,
-            heartRateMeasurementInitialized,
-            location,
-            rrIntervals,
-            heartRate,
-            contactDetected,
-            energyExpended
-        } = this.state;
-
-        return html`
-            <${Service} heading="heart rate">
-                <div>${bodySensorLocationInitialized ? null : "sensor location initializing"}</div>
-                <div>${heartRateMeasurementInitialized ? null : "heart rate initializing"}</div>
-                ${location !== null ? html`
-                    <div class="sensor-location">sensor location: ${BODY_SENSOR_LOCATIONS[location] || "Unknown"}</div>
-                ` : null}
-                ${heartRate !== null ? html`
-                    <div class="heart-rate">heart rate: ${heartRate}</div>
-                ` : null}
-                ${rrIntervals !== null ? html`
-                    <div class="rr-intervals">rr intevals: ${rrIntervals.join(", ")}</div>
-                ` : null}
-                ${contactDetected !== null ? html`
-                    <div class="contact-detected">contact detected: ${contactDetected}</div>
-                ` : null}
-                ${energyExpended !== null ? html`
-                    <div class="energy-expended">energy expended: ${energyExpended}</div>
-                ` : null}
-            <//>
-        `;
-    }
-
-    initCharacteristics () {
-        return Promise.all([
-            this.service.getCharacteristic("body_sensor_location").then(this.handleBodySensorLocationCharacteristic),
-            this.service.getCharacteristic("heart_rate_measurement").then(this.handleHeartRateMeasurementCharacteristic)
-        ]);
-    }
-
-    handleBodySensorLocationCharacteristic (characteristic) {
-        if (characteristic === null) {
-            this.location = "Unknown sensor location.";
-            return Promise.resolve();
+    useEffect(() => {
+        if (sensorLocationCharacteristic !== null) {
+            sensorLocationCharacteristic.readValue().then(sensorLocationData => setSensorLocation(sensorLocationData.getUint8(0)));
         }
-        this.setState({bodySensorLocationInitialized: true});
-        return characteristic.readValue().then(sensorLocationData => this.setState({location: sensorLocationData.getUint8(0)}));
-    }
-
-    handleHeartRateMeasurementCharacteristic (characteristic) {
-        this.heartRateCharacteristic = characteristic;
-        characteristic.addEventListener("characteristicvaluechanged", this.heartRateChangedHandler);
-
-        this.setState({heartRateMeasurementInitialized: true});
-        return characteristic.startNotifications();
-    }
+    }, [sensorLocationCharacteristic]);
 
 
-    heartRateChangedHandler (event) {
+    const heartRateChangeHandler = (event) => {
         const parsed = parseHeartRate(event.target.value);
-        const newState = {};
-        let changed = false;
         if (Object.prototype.hasOwnProperty.call(parsed, "heartRate")) {
-            if (this.state.heartRate !== parsed.heartRate) {
-                changed = true;
-                newState.heartRate = parsed.heartRate;
+            if (heartRate !== parsed.heartRate) {
+                setHeartRate(parsed.heartRate);
             }
-            this.dataCallbackFn("heartRate", [parsed.heartRate]);
         }
         if (Object.prototype.hasOwnProperty.call(parsed, "rrIntervals")) {
-            if (this.state.rrIntervals !== parsed.rrIntervals) {
-                changed = true;
-                newState.rrIntervals = parsed.rrIntervals;
+            if (rrIntervals !== parsed.rrIntervals) {
+                setRRIntervals(parsed.rrIntervals);
             }
-            //this.rrHistory.push([parsed.rrIntervals, parsed.datetime]);
         }
         if (Object.prototype.hasOwnProperty.call(parsed, "contactDetected")) {
-            if (this.state.contactDetected !== parsed.contactDetected) {
-                changed = true;
-                newState.contactDetected = parsed.contactDetected;
+            if (contactDetected !== parsed.contactDetected) {
+                setContactDetected(parsed.contactDetected);
             }
         }
-        if (changed) {
-            this.setState(newState);
+        if (Object.prototype.hasOwnProperty.call(parsed, "energyExpended")) {
+            if (energyExpended !== parsed.energyExpended) {
+                setEnergyExpended(parsed.energyExpended);
+            }
         }
-    }
+    };
 
+    useEffect(() => {
+        if (heartRateCharacteristic !== null) {
+            heartRateCharacteristic.addEventListener("characteristicvaluechanged", heartRateChangeHandler);
+            heartRateCharacteristic.startNotifications();
+
+            return () => heartRateCharacteristic.removeEventListener("characteristicvaluechanged", heartRateChangeHandler);
+        }
+    }, [heartRateCharacteristic]);
+
+    useEffect(() => {
+        if (heartRate !== null) {
+            console.log("TODO: send heart rate from feature: " + heartRate);
+        }
+    }, [heartRate]);
+
+
+    return html`
+        <${Service} heading="heart rate">
+            ${sensorLocation !== null ? html`
+                <div class="sensor-location">sensor location: ${BODY_SENSOR_LOCATIONS[sensorLocation] || "Unknown"}</div>
+            ` : null}
+            ${heartRate !== null ? html`
+                <div class="heart-rate">heart rate: ${heartRate}</div>
+            ` : null}
+            ${rrIntervals !== null ? html`
+                <div class="rr-intervals">rr intevals: ${rrIntervals.join(", ")}</div>
+            ` : null}
+            ${contactDetected !== null ? html`
+                <div class="contact-detected">contact detected: ${contactDetected}</div>
+            ` : null}
+            ${energyExpended !== null ? html`
+                <div class="energy-expended">energy expended: ${energyExpended}</div>
+            ` : null}
+        <//>
+    `;
 }
 
 export default HeartRateService;
