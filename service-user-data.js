@@ -1,45 +1,42 @@
 "use strict";
 
-import {html, Component} from "./preact-standalone.module.min.js";
+import {html, useState, useEffect} from "./preact-standalone.module.min.js";
 import Service from "./service.js";
 import {GATT_SERVICE_UUID} from "./GATT_constants.js";
+import {ACTION as STATUS_ACTION} from "./status.js";
+
 
 const UUID = GATT_SERVICE_UUID.USER_DATA;
 
-class UserData extends Component {
-    constructor ({service, logger = console}) {
-        super();
-        this.service = service;
+function UserData (props) {
+    const {service, dispatch} = props;
 
-        this.state = {
-            initialized: false,
-            firstName: null
-        };
+    const [firstName, setFirstName] = useState(null);
+    const [firstNameCharacteristic, setFirstNameCharacteristic] = useState(null);
 
-        this.initCharacteristics().then(() => this.setState({initialized: true}));
-    }
+    useEffect(() => {
+        (async function () {
+            await Promise.all([
+                service.getCharacteristic("first_name").then(c => setFirstNameCharacteristic(c))
+            ]);
+        })();
+    }, []);
 
-    render (props, {initialized, firstName}) {
-        return !initialized ? null : html`
-            <${Service} heading="user data">
-                ${firstName === null ? null : html`<p class="first-name>first name: ${firstName}</p>`}
-            <//>
-        `;
-    }
+    useEffect(() => {
+        if (firstNameCharacteristic !== null) {
+            firstNameCharacteristic.readValue()
+                .then(firstName => setFirstName(firstName.getUint8(0)))
+                .catch(error => {
+                    dispatch({type: STATUS_ACTION.ERROR, payload: {text: error.message, timestamp: new Date()}});
+                });
+        }
+    }, [firstNameCharacteristic]);
 
-    initCharacteristics () {
-        return Promise.all([
-            //service.getCharacteristic("first_name").then(this.handleFirstNameCharacteristic)
-        ]);
-    }
-
-    handleFirstNameCharacteristic (characteristic) {
-        return characteristic.readValue().then(firstName => this.firstName = firstName.getUint8(0));
-    }
-
-    set firstName (name) {
-        this.setState({"firstName": name});
-    }
+    return html`
+        <${Service} heading="user data">
+            ${firstName === null ? null : html`<p class="first-name>first name: ${firstName}</p>`}
+        <//>
+    `;
 }
 
 export default UserData;

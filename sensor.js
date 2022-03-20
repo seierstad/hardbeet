@@ -117,22 +117,22 @@ class Sensor extends Component {
                             if (typeof service.uuid === "string" && service.uuid.endsWith("-0000-1000-8000-00805f9b34fb")) {
                                 switch (parseInt(service.uuid.substring(4, 8), 16)) {
                                     case HEART_RATE_SERVICE_UUID:
-                                        return html`<${HeartRateService} key=${service.uuid} service=${service} dataCallbackFn=${this.dataCallbackFn} />`;
+                                        return html`<${HeartRateService} key=${service.uuid} service=${service} dispatch=${this.dispatch} dataCallbackFn=${this.dataCallbackFn} />`;
 
                                     case BATTERY_SERVICE_UUID:
-                                        return html`<${BatteryService} key=${service.uuid} service=${service} dataCallbackFn=${this.dataCallbackFn} />`;
+                                        return html`<${BatteryService} key=${service.uuid} service=${service} dispatch=${this.dispatch} dataCallbackFn=${this.dataCallbackFn} />`;
 
                                     case USER_DATA_SERVICE_UUID:
-                                        return html`<${UserDataService} key=${service.uuid} service=${service} dataCallbackFn=${this.dataCallbackFn} />`;
+                                        return html`<${UserDataService} key=${service.uuid} service=${service} dispatch=${this.dispatch} dataCallbackFn=${this.dataCallbackFn} />`;
 
                                     case DEVICE_INFORMATION_SERVICE_UUID:
-                                        return html`<${DeviceInformationService} key=${service.uuid} service=${service} dataCallbackFn=${this.dataCallbackFn} />`;
+                                        return html`<${DeviceInformationService} key=${service.uuid} service=${service} dispatch=${this.dispatch} dataCallbackFn=${this.dataCallbackFn} />`;
 
                                 }
                             } else {
                                 switch (service.uuid) {
                                     case POLAR_SERVICE_UUID:
-                                        return html`<${PolarService} key=${service.uuid} service=${service} functions=${this.functions} dataCallbackFn=${this.dataCallbackFn} />`;
+                                        return html`<${PolarService} key=${service.uuid} service=${service} dispatch=${this.dispatch} functions=${this.functions} dataCallbackFn=${this.dataCallbackFn} />`;
                                 }
                             }
                         })}
