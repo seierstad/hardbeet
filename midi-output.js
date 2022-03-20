@@ -1,229 +1,323 @@
 "use strict";
-import {html, Component} from "./preact-standalone.module.min.js";
+import {html, Component, useState, useEffect} from "./preact-standalone.module.min.js";
 import MidiPort from "./midi-port.js";
+import Transport from "./midi-transport.js";
 
 import {
     MESSAGE_TYPE,
     SYSEX_TYPE
 } from "./midi-constants.js";
 
-
 const MIDI_CLOCK_PPQ = 24;
 const DEFAULT_STATIC_TEMPO = 100;
+const STATIC_TEMPO_MIN = 30;
+const STATIC_TEMPO_MAX = 300;
 
-
-class MidiOutput extends Component {
-    constructor (props) {
-        super();
-
-        this.port = props.port;
-        this.clockStartHandler = this.clockStartHandler.bind(this);
-        this.clockStopHandler = this.clockStopHandler.bind(this);
-        this.changeStaticTempoHandler = this.changeStaticTempoHandler.bind(this);
-        this.clockSourceHandler = this.clockSourceHandler.bind(this);
-        this.heartRateNumeratorChangeHandler = this.heartRateNumeratorChangeHandler.bind(this);
-        this.heartRateDenominatorChangeHandler = this.heartRateDenominatorChangeHandler.bind(this);
-        this.sendClock = this.sendClock.bind(this);
-
-        this.transportStartHandler = this.transportStartHandler.bind(this);
-        this.transportContinueHandler = this.transportContinueHandler.bind(this);
-        this.transportStopHandler = this.transportStopHandler.bind(this);
-
-        this.stateChangeHandler = this.stateChangeHandler.bind(this);
-
-        this.port.addEventListener("statechange", this.stateChangeHandler);
-
-        this.clockInterval = null;
-        this.state = {
-            staticTempo: DEFAULT_STATIC_TEMPO,
-            clockSource: "static",
-            clockSourceChanged: false,
-            open: false,
-            clockRunning: false,
-            heartRate: 50,
-            heartRateNumerator: 1,
-            heartRateDenominator: 1,
-            heartRateFractionChanged: false,
-            heartRateChanged: false
-        };
-    }
-
-    stateChangeHandler (event) {
-        const portState = event.port.connection === "open";
-        if (this.state.open !== portState) {
-            this.setState({open: portState});
+const initialState = {
+    clock: {
+        staticTempo: DEFAULT_STATIC_TEMPO,
+        source: "static",
+        running: false,
+        fraction: {
+            numerator: 1,
+            denominator: 1
         }
+    },
+    transport: {
+        running: false
+    },
+    open: false
+
+};
+
+const ACTION = {
+    MIDI_CLOCK_SET_STATIC_TEMPO: Symbol("MIDI_CLOCK_SET_STATIC_TEMPO"),
+    MIDI_CLOCK_SOURCE: Symbol("MIDI_CLOCK_SOURCE"),
+    MIDI_CLOCK_NUMERATOR: Symbol("MIDI_CLOCK_NUMERATOR"),
+    MIDI_CLOCK_DENOMINATOR: Symbol("MIDI_CLOCK_DENOMINATOR")
+};
+
+const clockReducer = (state, action = {}) => {
+    const {type, payload = {}} = action;
+
+    switch (type) {
+        case ACTION.MIDI_CLOCK_SET_STATIC_TEMPO:
+            return {
+                ...state,
+                staticTempo: payload.value
+            };
+
+        case ACTION.MIDI_CLOCK_SOURCE:
+            return {
+                ...state,
+                source: payload.value
+            };
+
+        case ACTION.MIDI_CLOCK_NUMERATOR:
+            return {
+                ...state,
+                fraction: {
+                    ...state.fraction,
+                    numerator: payload.value
+                }
+            };
+
+        case ACTION.MIDI_CLOCK_DENOMINATOR:
+            return {
+                ...state,
+                fraction: {
+                    ...state.fraction,
+                    denominator: payload.value
+                }
+            };
+
     }
 
-    render () {
-        return html`
-            <${MidiPort} port=${this.port}>
-                ${this.state.open ? html`
-                    <>
-                        <div>
-                            <h5>transport</h5>
-                            <button onClick=${this.transportStartHandler}>start</button>
-                            <button onClick=${this.transportContinueHandler}>continue</button>
-                            <button onClick=${this.transportStopHandler}>stop</button>
-                        </div>
-                        <div>
-                            <h5>clock</h5>
-                            <button disabled=${!!this.state.clockRunning} onClick=${this.clockStartHandler}>start</button>
-                            <button disabled=${!this.state.clockRunning} onClick=${this.clockStopHandler}>stop</button>
-                            <div>
-                                <label>
-                                    <input
-                                        checked=${this.state.clockSource === "static"}
-                                        type="radio"
-                                        name="clock-source"
-                                        value="static"
-                                        onChange=${this.clockSourceHandler}
-                                    />
-                                    <span class="label-text">static</span>
-                                </label>
-                                <input
-                                    type="range"
-                                    min="30"
-                                    max="240"
-                                    value=${this.state.staticTempo}
-                                    step="0.1"
-                                    onInput=${this.changeStaticTempoHandler}
-                                />
-                                <span class="static-tempo-display">${this.state.staticTempo}</span>
-                            </div>
-                            <div>
-                                <label>
-                                    <input
-                                        checked=${this.state.clockSource === "heart-rate"}
-                                        type="radio"
-                                        name="clock-source"
-                                        value="heart-rate"
-                                        onChange=${this.clockSourceHandler}
-                                    />
-                                    <span class="label-text">heart-rate</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max="12"
-                                    step="1"
-                                    value=${this.state.heartRateNumerator}
-                                    onChange=${this.heartRateNumeratorChangeHandler}
-                                />
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max="12"
-                                    step="1"
-                                    value=${this.state.heartRateDenominator}
-                                    onChange=${this.heartRateDenominatorChangeHandler}
-                                />
-                            </div>
-                        </>
-                ` : null}
-            <//>
-        `;
+    return state;
+};
+
+const reducer = (state, action = {}) => {
+    const {type, payload = {}} = action;
+
+    switch (type) {
+        case ACTION.MIDI_CLOCK_SET_STATIC_TEMPO:
+        case ACTION.MIDI_CLOCK_SOURCE:
+        case ACTION.MIDI_CLOCK_NUMERATOR:
+        case ACTION.MIDI_CLOCK_DENOMINATOR:
+            return {
+                ...state,
+                clock: clockReducer(state.clock, action)
+            };
+
     }
 
-    clockSourceHandler (event) {
-        this.setState({
-            clockSource: event.target.value,
-            clockSourceChanged: true
-        });
+    return state;
+};
+
+class Clock {
+    constructor (port, options = {}) {
+        const {
+            numerator = 1,
+            denominator = 1
+        } = options;
+
+        this.port = port;
+        this.interval = null;
+        this.numerator = numerator;
+        this.denominator = denominator;
+        this.recalculateInterval = false;
+        this._running = false;
+        this._staticTempo = {value: 100};
+        this.heartRate = {value: 40};
+        this.source = "static";
     }
 
-    setClockInterval () {
-        if (this.clockSource === "static") {
-            this.setStaticClockInterval();
-        } else {
-            this.setHeartRateClockInterval();
+    start () {
+        this.running = true;
+        this.calculateClockInterval();
+    }
+
+    stop () {
+        this.running = false;
+
+        if (this.interval !== null) {
+            clearInterval(this.interval);
+            this.interval = null;
         }
-    }
-
-
-    clockStartHandler () {
-        this.setState({clockRunning: true});
-        this.setClockInterval();
-    }
-
-    clockStopHandler () {
-        this.setState({clockRunning: false});
-        clearInterval(this.clockInterval);
-    }
-
-    changeStaticTempoHandler (event) {
-        const value = parseFloat(event.target.value);
-        this.setState({
-            staticTempo: value,
-            staticTempoChanged: true
-        });
-    }
-
-    setStaticClockInterval () {
-        const interval = 1000 * 60.0 / this.state.staticTempo / MIDI_CLOCK_PPQ;
-        this.clockInterval = setInterval(this.sendClock, interval);
     }
 
     sendClock () {
-        this.port.send([SYSEX_TYPE.CLOCK]);
-        if (this.state.clockSource === "heart-rate") {
-            if (this.state.heartRateChanged || this.state.heartRateFractionChanged || this.state.clockSourceChanged) {
-                this.setState({
-                    clockSourceChanged: false,
-                    heartRateChanged: false,
-                    heartRateFractionChanged: false
-                });
-                clearInterval(this.clockInterval);
-                this.setHeartRateClockInterval();
+        if (this.running) {
+            this.port.send([SYSEX_TYPE.CLOCK]);
+            if (this.recalculateInterval) {
+                clearInterval(this.interval);
+                this.calculateClockInterval();
             }
         } else {
-            if (this.state.staticTempoChanged || this.state.clockSourceChanged) {
-                this.setState({
-                    clockSourceChanged: false,
-                    staticTempoChanged: false
-                });
-                clearInterval(this.clockInterval);
-                this.setStaticClockInterval();
-            }
+            clearInterval(this.interval);
         }
     }
 
-    heartRateNumeratorChangeHandler (event) {
+    calculateClockInterval () {
+        const interval = 1000 * 60.0 / (this.selectedSource.value * this.numerator / this.denominator) / MIDI_CLOCK_PPQ;
+        this.interval = setInterval(this.sendClock.bind(this), interval);
+        this.recalculateInterval = false;
+    }
+
+    set source (source) {
+        switch (source) {
+            case "static":
+                this.selectedSource = this._staticTempo;
+                break;
+            case "heart-rate":
+                this.selectedSource = this.heartRate;
+                break;
+        }
+
+        this.recalculateInterval = true;
+    }
+
+    get numerator () {
+        return this._numerator;
+    }
+    set numerator (numerator) {
+        this._numerator = numerator;
+        this.recalculateInterval = true;
+    }
+
+    get denominator () {
+        return this._denominator;
+    }
+    set denominator (denominator) {
+        this._denominator = denominator;
+        this.recalculateInterval = true;
+    }
+
+    set running (running) {
+        this._running = running;
+    }
+
+    get running () {
+        return this._running;
+    }
+
+    get staticTempo () {
+        return this._staticTempo.value;
+    }
+
+    set staticTempo (staticTempo) {
+        this._staticTempo.value = staticTempo;
+        this.recalculateInterval = true;
+    }
+}
+
+
+function MidiOutput (props) {
+    const {port} = props;
+    const [clock] = useState(new Clock(port));
+    const [clockRunning, setClockRunning] = useState(false);
+    const [clockSource, setClockSource] = useState("static");
+    const [numerator] = useState(1);
+    const [denominator] = useState(1);
+    const [staticTempo, setStaticTempo] = useState(DEFAULT_STATIC_TEMPO);
+
+    const clockStartHandler = () => {
+        setClockRunning(true);
+    };
+
+    const clockStopHandler = () => {
+        setClockRunning(false);
+    };
+
+    const numeratorHandler = (event) => {
         const value = parseInt(event.target.value, 10);
-        if (value !== this.heartRateNumerator) {
-            this.heartRateFractionChanged = true;
-            this.heartRateNumerator = value;
+        //setNumerator(value);
+        clock.numerator = value;
+    };
+
+    const denominatorHandler = (event) => {
+        clock.denominator = parseInt(event.target.value, 10);
+    };
+
+    const clockSourceHandler = (event) => {
+        setClockSource(event.target.value);
+    };
+
+    const staticTempoHandler = (event) => {
+        setStaticTempo(parseInt(event.target.value, 10));
+    };
+
+    useEffect(() => {
+        clock.source = clockSource;
+    }, [clockSource]);
+
+    useEffect(() => {
+        if (clockRunning) {
+            clock.start();
+        } else if (clock.running) {
+            clock.stop();
         }
-    }
+    }, [clockRunning]);
 
+    useEffect(() => {
+        clock.staticTempo = staticTempo;
+    }, [staticTempo]);
 
-    setHeartRateClockInterval () {
-        const interval = 1000 * 60.0 / (this.state.heartRate * this.state.heartRateDenominator / this.state.heartRateNumerator) / MIDI_CLOCK_PPQ;
-        this.clockInterval = setInterval(this.sendClock, interval);
-    }
+    return html`
+        <${MidiPort} port=${port}>
+            <${Transport} port=${port} />
+            <div>
+                <h5>clock</h5>
+                <button disabled=${!!clockRunning} onClick=${clockStartHandler}>start</button>
+                <button disabled=${!clockRunning} onClick=${clockStopHandler}>stop</button>
 
-    heartRateDenominatorChangeHandler (event) {
-        const value = parseInt(event.target.value, 10);
-        if (value !== this.heartRateDenominator) {
-            this.heartRateFractionChanged = true;
-            this.heartRateDenominator = value;
-        }
-    }
+                <div>
+                    <label>
+                        <input
+                            checked=${clockSource === "static"}
+                            type="radio"
+                            name="clock-source"
+                            value="static"
+                            onClick=${clockSourceHandler}
+                        />
+                        <span class="label-text">static</span>
+                    </label>
+                    <input
+                        type="range"
+                        min=${STATIC_TEMPO_MIN}
+                        max=${STATIC_TEMPO_MAX}
+                        value=${staticTempo}
+                        step="0.1"
+                        onInput=${staticTempoHandler}
+                    />
+                    <span class="static-tempo-display">${staticTempo}</span>
+                </div>
 
-    transportStartHandler () {
-        this.port.send([SYSEX_TYPE.START]);
-    }
-    transportContinueHandler () {
-        this.port.send([SYSEX_TYPE.CONTINUE]);
-    }
-    transportStopHandler () {
-        this.port.send([SYSEX_TYPE.STOP]);
-    }
+                <div>
+                    <label>
+                        <input
+                            checked=${clockSource === "heart-rate"}
+                            type="radio"
+                            name="clock-source"
+                            value="heart-rate"
+                            onClick=${clockSourceHandler}
+                        />
+                        <span class="label-text">heart-rate</span>
+                    </label>
+                    <input
+                        type="number"
+                        min="1"
+                        max="12"
+                        step="1"
+                        size="2"
+                        value=${numerator}
+                        onChange=${numeratorHandler}
+                    />
+                    <input
+                        type="number"
+                        min="1"
+                        max="12"
+                        step="1"
+                        size="2"
+                        value=${denominator}
+                        onChange=${denominatorHandler}
+                    />
+                    (${numerator} / ${denominator})
+                </div>
+            </div>
+        <//>
+    `;
+
 }
 
 
 export default MidiOutput;
 
+export {
+    initialState,
+    ACTION,
+    reducer
+};
 
 /*
     playBuffer () {

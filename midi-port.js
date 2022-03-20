@@ -2,7 +2,7 @@
 import {html, useState} from "./preact-standalone.module.min.js";
 
 function MidiPort (props) {
-    const {port, children} = props;
+    const {port, children, dispatch} = props;
 
     const [open, setOpen] = useState(false);
 
@@ -22,7 +22,7 @@ function MidiPort (props) {
         <fieldset>
             <legend>${port.manufacturer} ${port.name}</legend>
             <button onClick=${toggleOpenHandler}>${!open ? "open" : "close"}</button>
-            ${children}
+            ${open ? children : null}
         </fieldset>
     `;
 }

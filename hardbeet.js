@@ -1,5 +1,7 @@
 "use strict";
 import { html, render, useReducer, useEffect } from "./preact-standalone.module.min.js";
+//import { html, render, useReducer, useEffect } from "./preact.module.js";
+
 import Status, {ACTION as STATUS_ACTION, LOGLEVEL, reducer as statusReducer, initialState as statusInitialState} from "./status.js";
 import Sensors, {reducer as devicesReducer, initialState as devicesInitialState} from "./sensors.js";
 import Midi, {initialState as midiInitialState, ACTION as MIDI_ACTION, reducer as midiReducer} from "./midi.js";
@@ -74,7 +76,6 @@ const reducer = (state, action = {}) => {
         midi: midiReducer(state.midi, action)
     };
 };
-
 
 
 function Hardbeet () {
