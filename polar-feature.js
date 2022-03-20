@@ -44,7 +44,6 @@ class PolarFeature {
         this.controlPointHandler = this.controlPointHandler.bind(this);
 
         this.visualizer = new Visualizer();
-        //this.rootElement.appendChild(this.visualizer.rootElement);
 
         this.state = {
             max: null,

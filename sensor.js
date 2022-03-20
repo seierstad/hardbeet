@@ -9,11 +9,11 @@ import {
     POLAR_H10_UNDOCUMENTED_SERVICE
 } from "./polar-codes.js";
 
-import UserDataService, {UUID as USER_DATA_SERVICE_UUID} from "./user-data.js";
-import BatteryService, {UUID as BATTERY_SERVICE_UUID} from "./battery-service.js";
-import HeartRateService, {UUID as HEART_RATE_SERVICE_UUID} from "./heart-rate-service.js";
-import DeviceInformationService, {UUID as DEVICE_INFORMATION_SERVICE_UUID} from "./device-information.js";
-import PolarService, {UUID as POLAR_SERVICE_UUID} from "./polar-service.js";
+import UserDataService, {UUID as USER_DATA_SERVICE_UUID} from "./service-user-data.js";
+import BatteryService, {UUID as BATTERY_SERVICE_UUID} from "./service-battery.js";
+import HeartRateService, {UUID as HEART_RATE_SERVICE_UUID} from "./service-heart-rate.js";
+import DeviceInformationService, {UUID as DEVICE_INFORMATION_SERVICE_UUID} from "./service-device-information.js";
+import PolarService, {UUID as POLAR_SERVICE_UUID} from "./service-polar.js";
 
 
 const mainServiceUUID = HEART_RATE_SERVICE_UUID;
@@ -45,12 +45,11 @@ function byteArray2String (byteArray) {
 */
 
 class Sensor extends Component {
-    constructor ({device: {device, deviceIndex}, index, dataCallbackFn, functions = {}}) {
+    constructor ({device, index, functions = {}}) {
         super();
         this.index = index;
 
         this.device = device;
-        this.deviceIndex = deviceIndex;
 
         const {
             registerSource,
@@ -58,11 +57,9 @@ class Sensor extends Component {
         } = functions;
 
         this.functions = {
-            registerSource: registerSource.bind(this.deviceIndex),
-            registerDestination: registerDestination.bind(this.deviceIndex)
+            registerSource: registerSource.bind(index),
+            registerDestination: registerDestination.bind(index)
         };
-
-        this.dataCallbackFn = dataCallbackFn;
 
         this.addServices = this.addServices.bind(this);
         this.serviceError = this.serviceError.bind(this);
@@ -88,8 +85,6 @@ class Sensor extends Component {
             errorFn: this.serviceError
         }];
 
-
-        this.functions = 
 
         this.device.addEventListener("advertisementreceived", event => console.log(`sensor ${this.index}: advertisement received: ${event}`));
         if (typeof this.device.watchAdvertisements === "function") {

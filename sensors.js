@@ -34,6 +34,11 @@ function Sensors (props) {
     } = props;
 
 
+    const dataFunctions = {
+        registerSource: (sourceIndex, data) => console.log("register source " + sourceIndex + " with data " + data),
+        registerDestination: (destinationIndex, data) => console.log("register destination " + destinationIndex + " with data " + data)
+    };
+
     const addSensor = () => {
         navigator.bluetooth.requestDevice({
             filters: [
@@ -42,7 +47,8 @@ function Sensors (props) {
             optionalServices: optionalServicesUUIDs
         }).then(
             device => {
-                dispatch({type: ACTION.ADD_SENSOR, payload: {device, index: ++deviceCounter}});
+                deviceCounter += 1;
+                dispatch({type: ACTION.ADD_SENSOR, payload: {device, index: deviceCounter}});
             },
             error => {
                 dispatch({type: STATUS_ACTION.ERROR, payload: {text: "device request error: " + error, timestamp: new Date()}});
@@ -53,7 +59,7 @@ function Sensors (props) {
     return html`
         <section>
             <header><h2>sensors</h2></header>
-            ${devices.map(({device, index}) => device.name.startsWith("Polar") ? html`<${PolarSensor} device=${device} functions=${this.dataFunctions} index=${index} />` : html`<${Sensor} device=${device} functions=${this.dataFunctions} index=${index} />`)}
+            ${devices.map(({device, index}) => device.name.startsWith("Polar") ? html`<${PolarSensor} device=${device} functions=${dataFunctions} index=${index} />` : html`<${Sensor} device=${device} functions=${dataFunctions} index=${index} />`)}
             ${bluetoothAvailable ? html`<button onClick=${addSensor}>add sensor</button>` : null}
         </section>
     `;
