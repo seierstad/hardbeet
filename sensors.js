@@ -1,8 +1,16 @@
 "use strict";
 import {html} from "./preact-standalone.module.min.js";
-import Sensor, {mainServiceUUID, optionalServicesUUIDs} from "./sensor.js";
+import Sensor, {
+    mainServiceUUID,
+    optionalServicesUUIDs,
+    ACTION as SENSOR_ACTION,
+    reducer as sensorReducer,
+    initialState as initialSensorState
+} from "./sensor.js";
 import PolarSensor from "./polar-sensor.js";
 import {ACTION as STATUS_ACTION} from "./status.js";
+
+const SENSOR_ACTIONS = Object.values(SENSOR_ACTION);
 
 let deviceCounter = -1;
 
@@ -19,11 +27,25 @@ const reducer = (state, action = {}) => {
         case ACTION.ADD_SENSOR:
             return [
                 ...state,
-                {device: payload.device, index: payload.index}
+                {
+                    ...initialSensorState,
+                    device: payload.device,
+                    index: payload.index
+                }
             ];
-        default:
-            return state;
     }
+    if (SENSOR_ACTIONS.indexOf(type) !== -1) {
+        const sensorIndex = state.findIndex(sensor => sensor.device.id === payload.sensorId);
+        if (sensorIndex !== -1) {
+            return [
+                ...state.slice(0, sensorIndex),
+                sensorReducer(state[sensorIndex], action),
+                ...state.slice(sensorIndex + 1)
+            ];
+        }
+    }
+
+    return state;
 };
 
 function Sensors (props) {
@@ -59,7 +81,11 @@ function Sensors (props) {
     return html`
         <section>
             <header><h2>sensors</h2></header>
-            ${devices.map(({device, index}) => device.name.startsWith("Polar") ? html`<${PolarSensor} device=${device} dispatch=${dispatch} functions=${dataFunctions} index=${index} />` : html`<${Sensor} device=${device} dispatch=${dispatch} functions=${dataFunctions} index=${index} />`)}
+            ${devices.map(device => device.device.name.startsWith("Polar") ?
+                html`<${PolarSensor} state=${device} dispatch=${dispatch} functions=${dataFunctions} index=${device.index} key=${device.device.id} />`
+            :
+                html`<${Sensor} state=${device} dispatch=${dispatch} functions=${dataFunctions} index=${device.index.index} key=${device.device.id} />`
+            )}
             ${bluetoothAvailable ? html`<button onClick=${addSensor}>add sensor</button>` : null}
         </section>
     `;

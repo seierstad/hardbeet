@@ -17,26 +17,25 @@ import {
 function parseFeatureReadResponse (data) {
 
     const flags = data.getUint8(1);
-    const result = {
-        [MEASUREMENT_TYPE.ECG]: {
-            supported: !!(flags & PMD_FLAG.ECG_SUPPORTED)
-        },
-        [MEASUREMENT_TYPE.PPG]: {
-            supported: !!(flags & PMD_FLAG.PPG_SUPPORTED)
-        },
-        [MEASUREMENT_TYPE.ACCELERATION]: {
-            supported: !!(flags & PMD_FLAG.ACC_SUPPORTED)
-        },
-        [MEASUREMENT_TYPE.PP_INTERVAL]: {
-            supported: !!(flags & PMD_FLAG.PPI_SUPPORTED)
-        },
-        [MEASUREMENT_TYPE.GYROSCOPE]: {
-            supported: !!(flags & PMD_FLAG.GYRO_SUPPORTED)
-        },
-        [MEASUREMENT_TYPE.MAGNETOMETER]: {
-            supported: !!(flags & PMD_FLAG.MAG_SUPPORTED)
-        }
-    };
+    const result = [{
+        code: MEASUREMENT_TYPE.ECG,
+        supported: !!(flags & PMD_FLAG.ECG_SUPPORTED)
+    }, {
+        code: MEASUREMENT_TYPE.PPG,
+        supported: !!(flags & PMD_FLAG.PPG_SUPPORTED)
+    }, {
+        code: MEASUREMENT_TYPE.ACCELERATION,
+        supported: !!(flags & PMD_FLAG.ACC_SUPPORTED)
+    }, {
+        code: MEASUREMENT_TYPE.PP_INTERVAL,
+        supported: !!(flags & PMD_FLAG.PPI_SUPPORTED)
+    }, {
+        code: MEASUREMENT_TYPE.GYROSCOPE,
+        supported: !!(flags & PMD_FLAG.GYRO_SUPPORTED)
+    }, {
+        code: MEASUREMENT_TYPE.MAGNETOMETER,
+        supported: !!(flags & PMD_FLAG.MAG_SUPPORTED)
+    }];
 
     return result;
 }

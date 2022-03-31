@@ -6,28 +6,14 @@ import {
 
 import Sensor from "./sensor.js";
 
+function PolarSensor (props) {
+    const additionalServices = [{
+        id: POLAR_MEASUREMENT_DATA_SERVICE_UUID,
+        connectFn: () => console.log("brukes denne????"),
+        errorFn: () => console.log("her må det debugges...")
+    }];
 
-class PolarSensor extends Sensor {
-    constructor (props) {
-        super(props);
-
-        this.connectPmdService = this.connectPmdService.bind(this);
-
-        this.serviceDescriptors.push({
-            id: POLAR_MEASUREMENT_DATA_SERVICE_UUID,
-            connectFn: this.connectPmdService,
-            errorFn: this.pmdServiceError
-        });
-    }
-
-    connectPmdService (service) {
-        this.pmdService = service;
-    }
-
-    pmdServiceError (error) {
-        this.logger.log(`${this.index}: Polar measurement data service error: ${error}`);
-    }
+    return Sensor({...props, additionalServices});
 }
-
 
 export default PolarSensor;

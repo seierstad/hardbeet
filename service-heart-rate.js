@@ -125,7 +125,7 @@ function HeartRateService (props) {
 
     useEffect(() => {
         if (heartRate !== null) {
-            console.log("TODO: send heart rate from feature: " + heartRate);
+            //console.log("TODO: send heart rate from feature: " + heartRate);
         }
     }, [heartRate]);
 

@@ -20,18 +20,19 @@ function BatteryService (props) {
             return Promise.resolve();
         }
         characteristic.addEventListener("characteristicvaluechanged", handleBatteryLevelChanged);
-        return Promise.all([
-            characteristic.readValue().then(batteryLevelData => setBatteryLevel(batteryLevelData.getUint8(0))),
-            characteristic.startNotifications()
-        ]);
+
+        characteristic.readValue().then(batteryLevelData => setBatteryLevel(batteryLevelData.getUint8(0)));
+        characteristic.startNotifications();
     };
 
     useEffect(() => {
-        service.getCharacteristic("battery_level").then(handleBatteryLevelCharacteristic)
+        service.getCharacteristic("battery_level").then(handleBatteryLevelCharacteristic);
     }, []);
 
     useEffect(() => {
-        console.log("send batteryLevel to wherever needed: " + batteryLevel);
+        if (batteryLevel !== null) {
+            console.log("send batteryLevel to wherever needed: " + batteryLevel);
+        }
     }, [batteryLevel]);
 
     return html`

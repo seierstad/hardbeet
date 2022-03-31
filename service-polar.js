@@ -1,9 +1,9 @@
 "use strict";
 
 
-import {html, Component} from "./preact-standalone.module.min.js";
+import {html, useState, useEffect} from "./preact-standalone.module.min.js";
 import Service from "./service.js";
-import PolarFeature from "./polar-feature.js";
+import PolarFeature, {ACTION as FEATURE_ACTION, reducer as featureReducer} from "./polar-feature.js";
 
 import {
     POLAR_CHARACTERISTICS,
@@ -15,6 +15,7 @@ import {
     CONTROL_POINT_RESPONSE_TYPE
 } from "./polar-codes.js";
 
+import {ACTION as STATUS_ACTION} from "./status.js";
 import {
     parseFeatureReadResponse,
     parseControlPointResponse
@@ -22,129 +23,141 @@ import {
 
 const UUID = POLAR_MEASUREMENT_DATA_SERVICE_UUID;
 
+const initialState = {
+    features: []
+};
 
-class PolarService extends Component {
-    constructor ({service}) {
-        super();
-        this.service = service;
+const ACTION = {
+    ...FEATURE_ACTION,
+    POLAR_FEATURES_SUPPORTED: Symbol("POLAR_FEATURES_SUPPORTED")
+};
 
-        this.handleControlPointCharacteristic = this.handleControlPointCharacteristic.bind(this);
-        this.handleControlPointError = this.handleControlPointError.bind(this);
-        this.handleControlPointChanged = this.handleControlPointChanged.bind(this);
+const reducer = (state = initialState, action = {}) => {
+    const {type, payload = {}} = action;
+    const {measurementCode} = payload;
+    const {features = []} = state;
+    const featureIndex = features.findIndex(feature => feature.code === measurementCode);
 
-        this.handleDataCharacteristic = this.handleDataCharacteristic.bind(this);
-        this.handleDataChanged = this.handleDataChanged.bind(this);
-        this.handleDataError = this.handleDataError.bind(this);
+    switch (type) {
+        case ACTION.POLAR_FEATURES_SUPPORTED:
+            return {
+                ...state,
+                features: [
+                    ...features,
+                    ...payload.featureSupport.filter(feature => feature.supported)
+                ]
+            };
+    }
 
-        this.featureCommandHandler = this.featureCommandHandler.bind(this);
-
-        this.parameterRequest = 0;
-
-        this.state = {
-            features: {},
-            controlPointInitialized: false,
-            dataInitialized: false
+    if (Object.values(FEATURE_ACTION).indexOf(type) !== -1 && featureIndex !== -1) {
+        return {
+            ...state,
+            features: [
+                ...state.features.slice(0, featureIndex),
+                featureReducer(state.features[featureIndex], action),
+                ...state.features.slice(featureIndex + 1)
+            ]
         };
-
     }
 
-    setFeatureDataCallback (feature, func) {
-        this.dataCallback[feature] = func;
-    }
+    return state;
+};
 
 
-    componentDidMount () {
-        this.initCharacteristics();
-    }
+function PolarService (props) {
+    const {dispatch, state, sensorId, index} = props;
+    const {service, features = []} = state;
+    const [controlPointCharacteristic, setControlPointCharacteristic] = useState(null);
+    const [dataCharacteristic, setDataCharacteristic] = useState(null);
+    const [parameterRequest, setParameterRequest] = useState(null);
 
-    render (props, {features, controlPointInitialized, dataInitialized}) {
+    const handleControlPointError = (error) => {
+        dispatch({type: STATUS_ACTION.ERROR, payload: {text: `Sensor ${index} control point error: ` + error, timestamp: new Date()}});
+    };
 
-        return html`
-            <${Service} heading="polar data">
-                ${controlPointInitialized ? "control point initialized" : null}
-                ${dataInitialized ? "data initialized" : null}
-                <div class="feature-support">
-                    <h3>features</h3>
-                    <ul>
-                        ${Object.entries(features).map(([code, {parameters}]) => html`
-                            <${PolarFeature}
-                                commandFn=${this.featureCommandHandler}
-                                controlPoint=${this.controlPoint}
-                                dataCallbackFn=${this.dataCallbackFn}
-                                featureCode=${code}
-                                key=${code}
-                                parameters=${parameters}
-                            />
-                        `)} 
-                    </ul>
-                </div>
-            <//>
-        `;
-    }
+    const handleDataCharacteristicError = (error) => {
+        dispatch({type: STATUS_ACTION.ERROR, payload: {text: `Sensor ${index} PMD Data characteristic error: ` + error, timestamp: new Date()}});
+    };
 
-    initCharacteristics () {
-        return Promise.all([
-            this.service.getCharacteristic(POLAR_CHARACTERISTICS.PMD_CONTROL_POINT).then(this.handleControlPointCharacteristic, this.handleControlPointError),
-            this.service.getCharacteristic(POLAR_CHARACTERISTICS.PMD_DATA_MTU).then(this.handleDataCharacteristic, this.handleDataCharacteristicError)
-        ]);
-    }
+    useEffect(() => {
+        (async function () {
+            await Promise.all([
+                service.getCharacteristic(POLAR_CHARACTERISTICS.PMD_CONTROL_POINT).then(
+                    c => setControlPointCharacteristic(c),
+                    error => handleControlPointError(error)
+                ),
+                service.getCharacteristic(POLAR_CHARACTERISTICS.PMD_DATA_MTU).then(
+                    c => setDataCharacteristic(c),
+                    error => handleDataCharacteristicError(error)
+                )
+            ]);
+        })();
+    }, []);
 
-    async handleControlPointCharacteristic (characteristic) {
-        this.controlPoint = characteristic;
-        characteristic.addEventListener("characteristicvaluechanged", this.handleControlPointChanged);
+    const getNextParameterRequest = () => {
+        if (features.length !== 0) {
+            if (parameterRequest === null) {
+                return features[0].code;
+            }
 
-        //if (characteristic.properties.notify) {
-        await characteristic.startNotifications();
-        //}
+            const currentIndex = features.findIndex(feature => feature.code === parameterRequest);
 
-        this.setState({controlPointInitialized: true});
-        return characteristic.readValue().then(
-            parseFeatureReadResponse,
-            error => console.log("error when parsing control point initial response: " + error)
-        );
-    }
+            if (currentIndex === features.length - 1 || currentIndex === -1) {
+                return null;
+            }
 
-    handleControlPointError (error) {
-        console.log(`Sensor ${this.index} control point error: ` + error);
-    }
-
-
-    handleDataCharacteristic (characteristic) {
-        console.log("legger til datakildehåndtering");
-        if (characteristic.properties.notify) {
-            characteristic.startNotifications();
+            return features[currentIndex + 1].code;
         }
-        characteristic.addEventListener("characteristicvaluechanged", this.handleDataChanged);
-    }
+        console.log("nullllll features?????????");
+        return null;
+    };
 
-    handleDataChanged (event) {
-        //this.logger.log(`Sensor ${this.index}: PMD data MTU characteristic changed ${event}`);
-        //this.parsePMDData(event.target.value, 14, 1); // the values 14 and 1 are specific to ECG data from Polar H10
-        const featureCode = event.target.value.getUint8(0);
-        this.features[featureCode].parseData(event.target.value, this.dataCallbackFn);
-    }
+    useEffect(() => {
+        if (parameterRequest !== null) {
+            let request = null;
 
-    handleDataError (error) {
-        this.logger.log(`Sensor ${this.index} PMD Data characteristic error: ` + error);
-    }
+            switch (parameterRequest) {
 
-    handleControlPointChanged (event) {
+                case MEASUREMENT_TYPE.ECG:
+                    request = CONTROL_POINT_REQUEST.GET_ECG_STREAM_SETTINGS;
+                    break;
+                case MEASUREMENT_TYPE.PPG:
+                    request = CONTROL_POINT_REQUEST.GET_PPG_STREAM_SETTINGS;
+                    break;
+                case MEASUREMENT_TYPE.ACCELERATION:
+                    request = CONTROL_POINT_REQUEST.GET_ACC_STREAM_SETTINGS;
+                    break;
+                case MEASUREMENT_TYPE.PP_INTERVAL:
+                    request = CONTROL_POINT_REQUEST.GET_PPI_STREAM_SETTINGS;
+                    break;
+                case MEASUREMENT_TYPE.GYROSCOPE:
+                    request = CONTROL_POINT_REQUEST.GET_GYRO_STREAM_SETTINGS;
+                    break;
+                case MEASUREMENT_TYPE.MAGNETOMETER:
+                    request = CONTROL_POINT_REQUEST.GET_MAG_STREAM_SETTINGS;
+                    break;
+            }
+
+            request !== null && controlPointCharacteristic.writeValue(request);
+        }
+    }, [parameterRequest]);
+
+    const [parameterRequestInitialized, initializeParameterRequests] = useState(false);
+
+    useEffect(() => {
+        if (features.length !== 0 && parameterRequestInitialized) {
+            setParameterRequest(getNextParameterRequest());
+            initializeParameterRequests(false);
+        }
+    }, [features]);
+
+    const handleControlPointChanged = (event) => {
         switch (event.target.value.getUint8(0)) {
 
             case CONTROL_POINT_RESPONSE_TYPE.FEATURE_READ:
-                const newState = {
-                    ...this.state.features
-                };
-
-                const features = parseFeatureReadResponse(event.target.value);
-                for (const code in features) {
-                    if (features[code].supported) {
-                        newState[code] = features[code];
-                    }
-                }
-
-                this.state.features = newState;
-                this.getParameters();
+                const support = parseFeatureReadResponse(event.target.value);
+                initializeParameterRequests(true);
+                dispatch({type: ACTION.POLAR_FEATURES_SUPPORTED, payload: {serviceUUID: UUID, sensorId, featureSupport: support}});
                 break;
 
             case CONTROL_POINT_RESPONSE_TYPE.MEASUREMENT_CONTROL:
@@ -163,72 +176,25 @@ class PolarService extends Component {
 
                 switch (opCode) {
                     case OP_CODE.GET_MEASUREMENT_SETTINGS: {
-                        this.parameterRequest += 1;
-                        this.setState({
-                            features: {
-                                ...this.state.features,
-                                [measurementCode]: {
-                                    ...this.state.features[measurementCode],
-                                    parameters
-                                }
-                            }
-                        });
-                        this.getParameters();
+                        setParameterRequest(getNextParameterRequest());
+                        dispatch({type: ACTION.POLAR_FEATURE_MEASUREMENT_PARAMETERS, payload: {serviceUUID: UUID, sensorId, measurementCode, parameters}});
                         break;
                     }
 
                     case OP_CODE.START_MEASUREMENT: {
                         if (!error) {
-                            this.setState({
-                                features: {
-                                    ...this.state.features,
-                                    [measurementCode]: {
-                                        ...this.state.features[measurementCode],
-                                        status: "running"
-                                    }
-                                }
-                            });
+                            dispatch({type: ACTION.POLAR_MEASUREMENT_START, payload: {serviceUUID: UUID, sensorId, measurementCode, parameters}});
                         } else {
-                            this.setState({
-                                features: {
-                                    ...this.state.features,
-                                    [measurementCode]: {
-                                        ...this.state.features[measurementCode],
-                                        error: {
-                                            status,
-                                            operation: opName
-                                        }
-                                    }
-                                }
-                            });
+                            dispatch({type: ACTION.POLAR_MEASUREMENT_ERROR, payload: {serviceUUID: UUID, sensorId, measurementCode, status, operation: opName}});
                         }
                         break;
                     }
 
                     case OP_CODE.STOP_MEASUREMENT: {
                         if (!error) {
-                            this.setState({
-                                features: {
-                                    ...this.state.features,
-                                    [measurementCode]: {
-                                        ...this.state.features[measurementCode],
-                                        status: "stopped"
-                                    }
-                                }
-                            });
+                            dispatch({type: ACTION.POLAR_MEASUREMENT_STOP, payload: {sensorId, serviceUUID: UUID, measurementCode}});
                         } else {
-                            this.setState({
-                                features: {
-                                    ...this.state.features,
-                                    [measurementCode]: {
-                                        ...this.state.features[measurementCode],
-                                        error: {
-                                            status,
-                                            operation: opName
-                                        }
-                                    }
-                                }
-                            });
+                            dispatch({type: ACTION.POLAR_MEASUREMENT_ERROR, payload: {serviceUUID: UUID, sensorId, measurementCode, status, operation: opName}});
                         }
                         break;
                     }
@@ -236,22 +202,52 @@ class PolarService extends Component {
 
                 break;
             default:
-                this.logger.log("unknown control point response");
-        }
-    }
+                dispatch({type: STATUS_ACTION.ERROR, payload: {text: "unknown control point response from sensor " + index, timestamp: new Date()}});
 
-    featureCommandHandler (featureId, operationCode, parameters) {
-        let request;
+        }
+    };
+
+
+    useEffect(() => {
+        if (controlPointCharacteristic !== null) {
+            controlPointCharacteristic.startNotifications();
+            controlPointCharacteristic.addEventListener("characteristicvaluechanged", handleControlPointChanged);
+            controlPointCharacteristic.readValue();
+            /*.then(
+                response => setFeatureSupport(parseFeatureReadResponse(response)),
+                error => console.log("error when parsing control point initial response: " + error)
+            );*/
+        }
+    }, [controlPointCharacteristic]);
+
+    const handleDataChanged = (event) => {
+        //this.logger.log(`Sensor ${this.index}: PMD data MTU characteristic changed ${event}`);
+        //this.parsePMDData(event.target.value, 14, 1); // the values 14 and 1 are specific to ECG data from Polar H10
+        const featureCode = event.target.value.getUint8(0);
+        features[featureCode].parseData(event.target.value, dataCallbackFn);
+    };
+
+    useEffect(() => {
+        if (dataCharacteristic !== null) {
+            if (dataCharacteristic.properties.notify) {
+                dataCharacteristic.startNotifications();
+            }
+            dataCharacteristic.addEventListener("characteristicvaluechanged", handleDataChanged);
+        }
+    }, [dataCharacteristic]);
+
+    const featureCommandHandler = (featureId, operationCode, parameters) => {
+        let request = null;
 
         switch (operationCode) {
             case OP_CODE.START_MEASUREMENT:
                 request = new ArrayBuffer(2 + (4 * parameters.length));
                 const view = new DataView(request);
-                let i = 0;
-                view.setUint8(i, operationCode);
-                i += 1;
-                view.setUint8(i, featureId);
-                i += 1;
+
+                view.setUint8(0, operationCode);
+                view.setUint8(1, featureId);
+
+                let i = 2;
                 parameters.forEach(([parameter, value]) => {
                     view.setUint8(i, parameter);
                     i += 1;
@@ -267,62 +263,41 @@ class PolarService extends Component {
                 break;
 
             default:
-                this.logger.error("unknown operation code: " + operationCode);
+                dispatch({type: STATUS_ACTION.ERROR, payload: {text: `unknown operation code: ${operationCode}`, timestamp: new Date()}});
         }
 
-        this.controlPoint.writeValueWithoutResponse(request);
-    }
-
-    getParameters () {
-        if (this.parameterRequest === 0) {
-            if (this.state.features[MEASUREMENT_TYPE.ECG]) {
-                this.controlPoint.writeValue(CONTROL_POINT_REQUEST.GET_ECG_STREAM_SETTINGS);
-            } else {
-                this.parameterRequest += 1;
-            }
+        if (request !== null) {
+            controlPointCharacteristic.writeValueWithoutResponse(request);
         }
+    };
 
-        if (this.parameterRequest === 1) {
-            if (this.state.features[MEASUREMENT_TYPE.PPG]) {
-                this.controlPoint.writeValue(CONTROL_POINT_REQUEST.GET_PPG_STREAM_SETTINGS);
-            } else {
-                this.parameterRequest += 1;
-            }
-        }
 
-        if (this.parameterRequest === 2) {
-            if (this.state.features[MEASUREMENT_TYPE.ACCELERATION]) {
-                this.controlPoint.writeValue(CONTROL_POINT_REQUEST.GET_ACC_STREAM_SETTINGS);
-            } else {
-                this.parameterRequest += 1;
-            }
-        }
+    return html`
+        <${Service} heading="polar data">
+            ${controlPointCharacteristic !== null ? "control point initialized" : null}
+            ${dataCharacteristic !== null ? "data initialized" : null}
+            <div class="feature-support">
+                <h3>features</h3>
+                ${Object.entries(features).map(([code, {parameters}]) => html`
+                    <${PolarFeature}
+                        commandFn=${featureCommandHandler}
+                        controlPoint=${controlPointCharacteristic}
+                        featureCode=${code}
+                        key=${code}
+                        parameters=${parameters}
+                    />
+                `)} 
+            </div>
+        <//>
 
-        if (this.parameterRequest === 3) {
-            if (this.state.features[MEASUREMENT_TYPE.PP_INTERVAL]) {
-                this.controlPoint.writeValue(CONTROL_POINT_REQUEST.GET_PPI_STREAM_SETTINGS);
-            } else {
-                this.parameterRequest += 1;
-            }
-        }
-
-        if (this.parameterRequest === 4) {
-            if (this.state.features[MEASUREMENT_TYPE.GYROSCOPE]) {
-                this.controlPoint.writeValue(CONTROL_POINT_REQUEST.GET_GYRO_STREAM_SETTINGS);
-            } else {
-                this.parameterRequest += 1;
-            }
-        }
-
-        if (this.parameterRequest === 5) {
-            if (this.state.features[MEASUREMENT_TYPE.MAGNETOMETER]) {
-                this.controlPoint.writeValue(CONTROL_POINT_REQUEST.GET_MAG_STREAM_SETTINGS);
-            }
-        }
-    }
-
+    `;
 }
 
 export default PolarService;
 
-export {UUID};
+export {
+    UUID,
+    initialState,
+    ACTION,
+    reducer
+};

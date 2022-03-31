@@ -13,6 +13,10 @@ const stringFromBuffer = buffer => {
     return String.fromCharCode(...(arr.subarray(0, arr.indexOf(0))));
 };
 
+const hexFromBuffer = buffer => {
+    const arr = new Uint8Array(buffer);
+    return arr.map(c => parseInt(c, 16)).join("");
+};
 
 function DeviceInformation (props) {
     const {service, dispatch} = props;
@@ -35,9 +39,10 @@ function DeviceInformation (props) {
     const [firmwareRevision, setFirmwareRevision] = useState(null);
     const [firmwareRevisionCharacteristic, setFirmwareRevisionCharacteristic] = useState(null);
 
+    /*
     const [softwareRevision, setSoftwareRevision] = useState(null);
     const [softwareRevisionCharacteristic, setSoftwareRevisionCharacteristic] = useState(null);
-
+    */
 
     useEffect(() => {
         (async function () {
@@ -46,8 +51,8 @@ function DeviceInformation (props) {
                 service.getCharacteristic(CHARACTERISTIC_UUID.SYSTEM_ID).then(c => setSystemIdCharacteristic(c)),
                 service.getCharacteristic(CHARACTERISTIC_UUID.MODEL_NUMBER_STRING).then(c => setModelNumberCharacteristic(c)),
                 service.getCharacteristic(CHARACTERISTIC_UUID.FIRMWARE_REVISION_STRING).then(c => setFirmwareRevisionCharacteristic(c)),
-                service.getCharacteristic(CHARACTERISTIC_UUID.SOFTWARE_REVISION_STRING).then(c => setSoftwareRevisionCharacteristic(c))
                 /*
+                service.getCharacteristic(CHARACTERISTIC_UUID.SOFTWARE_REVISION_STRING).then(c => setSoftwareRevisionCharacteristic(c))
                 service.getCharacteristic(CHARACTERISTIC_UUID.SERIAL_NUMBER_STRING).then(c => setSerialNumberCharacteristic(c)),
                 */
             ]);
@@ -65,7 +70,7 @@ function DeviceInformation (props) {
     useEffect(() => {
         if (systemIdCharacteristic !== null) {
             systemIdCharacteristic.readValue()
-                .then(response => setSystemId(stringFromBuffer(response.buffer)))
+                .then(response => setSystemId(hexFromBuffer(response.buffer)))
                 .catch(error => dispatch({type: STATUS_ACTION.ERROR, payload: {text: "system id error: " + error.message, timestamp: new Date()}}));
         }
     }, [systemIdCharacteristic]);
@@ -86,6 +91,7 @@ function DeviceInformation (props) {
         }
     }, [firmwareRevisionCharacteristic]);
 
+    /*
     useEffect(() => {
         if (softwareRevisionCharacteristic !== null) {
             softwareRevisionCharacteristic.readValue()
@@ -93,6 +99,7 @@ function DeviceInformation (props) {
                 .catch(error => dispatch({type: STATUS_ACTION.ERROR, payload: {text: "software revision error: " + error.message, timestamp: new Date()}}));
         }
     }, [softwareRevisionCharacteristic]);
+    */
 
     return html`
         <${Service} heading="device information">
@@ -100,7 +107,6 @@ function DeviceInformation (props) {
             ${modelNumber !== null ? html`<p>model number: ${modelNumber}</p>` : null}
             ${manufacturerName !== null ? html`<p>manufacturer name: ${manufacturerName}</p>` : null}
             ${firmwareRevision !== null ? html`<p>firmware revision: ${firmwareRevision}</p>` : null}
-            ${softwareRevision !== null ? html`<p>software revision: ${softwareRevision}</p>` : null}
         <//>
     `;
 }
