@@ -1,4 +1,4 @@
-import {useEffect, useState, useContext} from "preact/hooks";
+import {useEffect, useLayoutEffect, useState, useContext, useRef} from "preact/hooks";
 import {html} from "htm/preact";
 
 import {AppStateContext} from "../hardbeet.js";
@@ -18,8 +18,25 @@ const Midi = props => {
     const [access, setAccess] = useState(null);
     const [accessError, setAccessError] = useState(null);
 
+    const firstRender = useRef(true);
+
+    useLayoutEffect(() => {
+        log("testing if MIDI is available");
+        handler.setAvailable(!!navigator.requestMIDIAccess);
+    }, [firstRender]);
+
     useEffect(() => {
-        if (accessRequested) {
+        if (state.available.value !== null) {
+            if (state.available.value) {
+                log("MIDI is available.");
+            } else {
+                log("MIDI is not available");
+            }
+        }
+    }, [state.available.value]);
+
+    useEffect(() => {
+        if (state.available.value && accessRequested) {
             navigator.requestMIDIAccess({"sysex": true}).then(setAccess, setAccessError);
             log("Requesting MIDI access");
         }

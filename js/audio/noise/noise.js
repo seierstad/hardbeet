@@ -1,10 +1,10 @@
-"use strict";
 import {useEffect, useState} from "preact/hooks";
 import {html} from "htm/preact";
 
-import Toggle from "../toggle.js";
+import Toggle from "../../toggle.js";
 
-const PROCESSOR_FILENAME = "./js/audio/noise-processor.js";
+
+const PROCESSOR_FILENAME = "./js/audio/noise/noise-processor.js";
 
 
 class NoiseNode extends AudioWorkletNode {
@@ -27,31 +27,8 @@ class NoiseNode extends AudioWorkletNode {
     }
 }
 
-const ACTION = {
-    AUDIO_NOISE_TOGGLE: Symbol("AUDIO_NOISE_TOGGLE"),
-    AUDIO_NOISE_COLOR: Symbol("AUDIO_NOISE_COLOR")
-};
-
-const initialState = {
-    toggle: "off",
-    color: "white"
-};
-
-const reducer = (state, action = {}) => {
-    const {type, payload} = action;
-    switch (type) {
-        case ACTION.AUDIO_NOISE_TOGGLE:
-            return {...state, toggle: payload};
-        case ACTION.AUDIO_NOISE_COLOR:
-            return {...state, color: payload};
-        default:
-            return state;
-    }
-};
-
-
-function AudioNoise (props) {
-    const {dispatch, ctx, destination, state = {}} = props;
+const Noise = (props = {}) => {
+    const {ctx, destination, state = {}, handlers = {}} = props;
 
     const [workletLoaded, setWorkletLoadedStatus] = useState(false);
     const [noise, setNoise] = useState(null);
@@ -76,29 +53,26 @@ function AudioNoise (props) {
 
     useEffect(() => {
         if (noise !== null) {
-            noise.toggle = state.toggle;
+            noise.toggle = state.toggle.value;
         }
-    }, [state.toggle, noise]);
+    }, [state.toggle.value, noise]);
 
     useEffect(() => {
         if (noise !== null) {
-            noise.color = state.color;
+            noise.color = state.color.value;
         }
-    }, [state.color, noise]);
+    }, [state.color.value, noise]);
 
     return html`
         <div class="noise">
             <h5>noise</h5>
-            <${Toggle} name="toggle" options=${[["off"], ["on"]]} selected=${state.toggle} default="off" dispatch=${dispatch} action=${ACTION.AUDIO_NOISE_TOGGLE} />
-            <${Toggle} name="color" options=${[["white"], ["pink"]]} selected=${state.color} default="white" dispatch=${dispatch} action=${ACTION.AUDIO_NOISE_COLOR} />
+            <${Toggle} name="toggle" options=${[["off"], ["on"]]} selected=${state.toggle} default="off" onChange=${handlers.toggle} />
+            <${Toggle} name="color" options=${[["white"], ["pink"]]} selected=${state.color} default="white" onChange=${handlers.color} />
         </div>
     `;
-}
+};
 
-export default AudioNoise;
 
 export {
-    initialState,
-    ACTION,
-    reducer
+    Noise
 };

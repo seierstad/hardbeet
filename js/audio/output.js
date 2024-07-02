@@ -1,52 +1,16 @@
-"use strict";
-import {useEffect, useState} from "preact/hooks";
+import {useEffect, useState, useContext} from "preact/hooks";
 import {html} from "htm/preact";
 
-import Noise, {
-    initialState as initialNoiseState,
-    ACTION as NOISE_ACTION,
-    reducer as noiseReducer
-} from "./noise.js";
+import {AppStateContext, AppHandlersContext} from "hardbeet";
 
-import Carrier, {
-    initialState as initialCarrierState,
-    ACTION as CARRIER_ACTION,
-    reducer as carrierReducer
-} from "./carrier.js";
+import {Carrier} from "./carrier/carrier.js";
+import {Constant} from "./constant/constant.js";
+import {Noise} from "./noise/noise.js";
 
-import Constant, {
-    initialState as initialConstantState,
-    ACTION as CONSTANT_ACTION,
-    reducer as constantReducer
-} from "./constant.js";
 
-const ACTION = {
-    ...CARRIER_ACTION,
-    ...CONSTANT_ACTION,
-    ...NOISE_ACTION
-};
-
-const initialState = {
-    carrier: initialCarrierState,
-    constant: initialConstantState,
-    noise: initialNoiseState
-};
-
-const reducer = (state, action = {}) => {
-
-    if (Object.values(ACTION).indexOf(action.type) === -1) {
-        return state;
-    }
-
-    return {
-        carrier: carrierReducer(state.carrier, action),
-        constant: constantReducer(state.constant, action),
-        noise: noiseReducer(state.noise, action)
-    };
-};
-
-function AudioOutput (props) {
-    const {dispatch, state} = props;
+const AudioOutput = (props = {}) => {
+    const {audio: state} = useContext(AppStateContext);
+    const {audio: handlers} = useContext(AppHandlersContext);
 
     const [ctx] = useState(new AudioContext());
     const [masterGain] = useState(ctx.createGain());
@@ -57,21 +21,22 @@ function AudioOutput (props) {
         modulatedGain.connect(masterGain).connect(ctx.destination);
     }, []);
 
-    /*
-    this.previousTimestamp = null;
-    */
-
     return html`
         <section>
             <header><h2>audio output</h2></header>
-            <${Carrier} dispatch=${dispatch} state=${state.carrier} ctx=${ctx} destination=${modulatedGain} />
-            <${Constant} dispatch=${dispatch} state=${state.constant} ctx=${ctx} destination=${modulatedGain} />
-            <${Noise} dispatch=${dispatch} state=${state.noise} ctx=${ctx} destination=${modulatedGain} />
+            <${Carrier} state=${state.carrier} ctx=${ctx} destination=${modulatedGain} handlers=${handlers.carrier} />
+            <${Noise} state=${state.noise} ctx=${ctx} destination=${modulatedGain} handlers=${handlers.noise} />
+            <${Constant} state=${state.constant} ctx=${ctx} destination=${modulatedGain} handlers=${handlers.constant} />
         </section>
     `;
-}
+};
 
 /*
+
+
+
+
+
 
     initialize () {
         if (this.ctx === null) {
@@ -138,10 +103,7 @@ function AudioOutput (props) {
 }
 */
 
-export default AudioOutput;
 
 export {
-    ACTION,
-    initialState,
-    reducer
+    AudioOutput
 };

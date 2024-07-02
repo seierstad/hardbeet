@@ -9,6 +9,8 @@ import {Midi} from "./midi/midi.js";
 import {getState} from "./state.js";
 import {getHandlers} from "./handlers.js";
 
+import {AudioOutput} from "./audio/output.js";
+
 /*
 import Sensors, {
     reducer as devicesReducer,
@@ -75,9 +77,6 @@ const Hardbeet = () => {
         },
         bluetooth: {
             setAvailable: setBTAvailable
-        },
-        midi: {
-            setAvailable: setMidiAvailable
         }
     } = handlers;
 
@@ -100,9 +99,6 @@ const Hardbeet = () => {
             );
         }
 
-        log("testing if MIDI is available");
-        setMidiAvailable(!!navigator.requestMIDIAccess);
-
         return () => {
             navigator.bluetooth.removeEventListener("advertisementreceived");
             navigator.bluetooth.removeEventListener("availabilitychanged");
@@ -116,16 +112,6 @@ const Hardbeet = () => {
         }
     }, [state.bluetooth.available.value]);
 
-
-    useEffect(() => {
-        if (state.midi.available.value !== null) {
-            if (state.midi.available.value) {
-                log("MIDI is available.");
-            } else {
-                log("MIDI is not available");
-            }
-        }
-    }, [state.midi.available.value]);
 
     useEffect(() => {
         if (state.interactive.value) {
@@ -144,6 +130,7 @@ const Hardbeet = () => {
         <main onClick=${firstClickHandler}>
             <${Log} entries=${state.log.entries} title=${state.log.title} />
             <${Midi} state=${state.midi} />
+            ${state.interactive.value ? html`<${AudioOutput} state=${state.audio}/>` : null}
         </main>
     `;
 };
@@ -154,7 +141,7 @@ const Hardbeet = () => {
 
                     ${devices.map(({device}) => html`<p>${device.name}, ${device.type}</p>`)}
                     <${Sensors} bluetoothAvailable=${bluetoothAvailable} bluetooth=${navigator.bluetooth} devices=${devices} dispatch=${dispatch} functions=${this.dataFunctions} />
-                    ${interactive ? html`<${AudioOutput} dispatch=${dispatch} state=${state.audio}/>` : null}
+
 
 
 

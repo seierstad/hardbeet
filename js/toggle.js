@@ -2,21 +2,20 @@ import {useState} from "preact/hooks";
 import {html} from "htm/preact";
 
 
-function Toggle (props) {
+const Toggle = (props = {}) => {
     const {
         name,
         options = [],
         default: defaultValue,
         legend = name,
-        dispatch,
-        action
+        onChange
     } = props;
 
     const [checkedValue, setState] = useState(defaultValue);
 
     const clickHandler = (event) => {
         setState(event.target.value);
-        dispatch({type: action, payload: event.target.value});
+        onChange(event.target.value);
     };
 
     return html`
@@ -36,6 +35,6 @@ function Toggle (props) {
             `)}
         </fieldset>
     `;
-}
+};
 
 export default Toggle;
