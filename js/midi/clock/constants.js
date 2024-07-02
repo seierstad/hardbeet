@@ -1,0 +1,9 @@
+const MIDI_CLOCK_PPQ = 24;
+const STATIC_TEMPO_MIN = 30;
+const STATIC_TEMPO_MAX = 300;
+
+export {
+    MIDI_CLOCK_PPQ,
+    STATIC_TEMPO_MAX,
+    STATIC_TEMPO_MIN
+};

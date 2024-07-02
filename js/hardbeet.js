@@ -1,14 +1,35 @@
-"use strict";
-import {render} from "preact";
-import {useReducer, useEffect} from "preact/hooks";
+import "preact/debug";
+import {render, createContext} from "preact";
+import {useReducer, useEffect, useContext} from "preact/hooks";
 import {html} from "htm/preact";
 
-import Status, {ACTION as STATUS_ACTION, LOGLEVEL, reducer as statusReducer, initialState as statusInitialState} from "./status.js";
-import Sensors, {reducer as devicesReducer, initialState as devicesInitialState} from "./sensors.js";
-import Midi, {initialState as midiInitialState, ACTION as MIDI_ACTION, reducer as midiReducer} from "./midi.js";
-import AudioOutput, {reducer as audioReducer, ACTION as AUDIO_ACTION, initialState as audioInitialState} from "./audio-output.js";
+import {Log} from "./log/log.js";
+import {Midi} from "./midi/midi.js";
+
+import {getState} from "./state.js";
+import {getHandlers} from "./handlers.js";
+
+/*
+import Sensors, {
+    reducer as devicesReducer,
+    initialState as devicesInitialState
+} from "./bluetooth/sensor/sensors.js";
 
 
+
+import AudioOutput, {
+    reducer as audioReducer,
+    ACTION as AUDIO_ACTION,
+    initialState as audioInitialState
+} from "./audio/output.js";
+*/
+const AppStateContext = createContext();
+const AppHandlersContext = createContext();
+
+const appState = getState();
+const appHandlers = getHandlers(appState);
+
+/*
 const initialState = {
     devices: devicesInitialState,
     status: statusInitialState,
@@ -19,75 +40,52 @@ const initialState = {
     interactive: false
 };
 
-const ACTION = {
-    SET_INTERACTIVE: Symbol("SET_INTERACTIVE"),
-    BT_AVAILABILITY: Symbol("BT_AVAILABILITY"),
-    MIDI_AVAILABILITY: Symbol("MIDI_AVAILABILITY"),
-    TEST_1: Symbol("TEST_1"),
-    TEST_2: Symbol("TEST_2")
-};
-
 const rootReducer = (state, action = {}) => {
     const {type, payload = {}} = action;
     const {audioContext = false} = payload;
 
     switch (type) {
-        case ACTION.TEST_1:
-            console.log("test 1");
-            return {
-                ...state
-            };
-
-        case ACTION.TEST_2:
-            console.log("test 2");
-            return {
-                ...state
-            };
-
         case ACTION.SET_INTERACTIVE:
             return {
                 ...state,
                 audioContext,
                 interactive: true
             };
-
-        case ACTION.BT_AVAILABILITY:
-            return {
-                ...state,
-                bluetoothAvailable: payload
-            };
-
-        case ACTION.MIDI_AVAILABILITY:
-            return {
-                ...state,
-                midiAvailable: payload
-            };
-
-        default:
-            return state;
     }
 };
 
 const reducer = (state, action = {}) => {
     return {
         ...rootReducer(state, action),
-        status: statusReducer(state.status, action),
         devices: devicesReducer(state.devices, action),
         audio: audioReducer(state.audio, action),
         midi: midiReducer(state.midi, action)
     };
 };
+*/
 
+const Hardbeet = () => {
+    const handlers = useContext(AppHandlersContext);
+    const state = useContext(AppStateContext);
 
-function Hardbeet () {
-    const [state, dispatch] = useReducer(reducer, initialState);
-    const log = (text) => dispatch({type: STATUS_ACTION.LOG, payload: {text, timestamp: new Date()}});
+    const {
+        setInteractive,
+        log: {
+            log
+        },
+        bluetooth: {
+            setAvailable: setBTAvailable
+        },
+        midi: {
+            setAvailable: setMidiAvailable
+        }
+    } = handlers;
 
     useEffect(() => {
         log("testing if bluetooth is available");
 
         if (!navigator.bluetooth || typeof navigator.bluetooth.getAvailability !== "function") {
-            dispatch({type: ACTION.BT_AVAILABILITY, payload: false});
+            setBTAvailable(false);
         } else {
             navigator.bluetooth.addEventListener("advertisementreceived", event => {
                 log("bluetooth advertisement received: " + event);
@@ -97,67 +95,68 @@ function Hardbeet () {
             });
 
             navigator.bluetooth.getAvailability().then(
-                isAvailable => dispatch({type: ACTION.BT_AVAILABILITY, payload: isAvailable}),
+                isAvailable => setBTAvailable(isAvailable),
                 rejection => log("bluetooth is not available" + (rejection ? (": " + rejection) : ""))
             );
         }
 
         log("testing if MIDI is available");
-        dispatch({type: ACTION.MIDI_AVAILABILITY, payload: !!navigator.requestMIDIAccess});
+        setMidiAvailable(!!navigator.requestMIDIAccess);
+
+        return () => {
+            navigator.bluetooth.removeEventListener("advertisementreceived");
+            navigator.bluetooth.removeEventListener("availabilitychanged");
+        };
     }, []);
 
-
     useEffect(() => {
-        dispatch({type: ACTION.TEST_1});
-        if (state.interactive) {
-            log("interactive!");
-        }
-        dispatch({type: ACTION.TEST_2});
-    }, [state.interactive]);
-
-    useEffect(() => {
-        if (state.bluetoothAvailable !== null) {
-            log(`bluetooth is ${state.bluetoothAvailable ? "" : "not "}available`);
+        if (state.bluetooth.available.value !== null) {
+            log(`bluetooth is ${state.bluetooth.available.value ? "" : "not "}available`);
 
         }
-    }, [state.bluetoothAvailable]);
+    }, [state.bluetooth.available.value]);
+
 
     useEffect(() => {
-        if (state.midiAvailable !== null) {
-            if (state.midiAvailable) {
+        if (state.midi.available.value !== null) {
+            if (state.midi.available.value) {
                 log("MIDI is available.");
             } else {
                 log("MIDI is not available");
             }
         }
-    }, [state.midiAvailable]);
+    }, [state.midi.available.value]);
+
+    useEffect(() => {
+        if (state.interactive.value) {
+            log("interactive!");
+        }
+    }, [state.interactive.value]);
 
     const firstClickHandler = () => {
-        if (!state.interactive) {
-            dispatch({type: ACTION.SET_INTERACTIVE});
+        if (!state.interactive.value) {
+            setInteractive(true);
         }
     };
 
-    const {
-        devices,
-        status,
-        interactive,
-        bluetoothAvailable,
-        midiAvailable
-    } = state;
 
     return html`
         <main onClick=${firstClickHandler}>
-            <${Status} messages=${status}/>
-            ${devices.map(({device}) => html`<p>${device.name}, ${device.type}</p>`)}
-            <${Sensors} bluetoothAvailable=${bluetoothAvailable} bluetooth=${navigator.bluetooth} devices=${devices} dispatch=${dispatch} functions=${this.dataFunctions} />
-            ${midiAvailable ? html`<${Midi} dispatch=${dispatch} state=${state.midi} />` : null}
-            ${interactive ? html`<${AudioOutput} dispatch=${dispatch} state=${state.audio}/>` : null}
+            <${Log} entries=${state.log.entries} title=${state.log.title} />
+            <${Midi} state=${state.midi} />
         </main>
     `;
-}
+};
+
+
 
 /*
+
+                    ${devices.map(({device}) => html`<p>${device.name}, ${device.type}</p>`)}
+                    <${Sensors} bluetoothAvailable=${bluetoothAvailable} bluetooth=${navigator.bluetooth} devices=${devices} dispatch=${dispatch} functions=${this.dataFunctions} />
+                    ${interactive ? html`<${AudioOutput} dispatch=${dispatch} state=${state.audio}/>` : null}
+
+
 
 dataCallbackFn (dataType, data, parameters) {
     const {
@@ -196,4 +195,19 @@ callbackFunctions.ecg.push(midi.addModulationData);
 */
 
 
-render(html`<${Hardbeet} />`, document.body);
+render(
+    html`
+        <${AppStateContext.Provider} value=${appState}>
+            <${AppHandlersContext.Provider} value=${appHandlers}>
+                <${Hardbeet} />
+            <//>
+        <//>
+    `,
+    document.body
+);
+
+
+export {
+    AppHandlersContext,
+    AppStateContext
+};

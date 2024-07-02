@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "Hardbeet is a bluetooth heart rate monitor to MIDI tempo converter",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "server": "serve",
@@ -11,17 +12,22 @@
   "author": "Erik Erik Seierstad",
   "license": "CC-BY-SA-4.0",
   "devDependencies": {
+    "@eslint/compat": "^1.1.0",
+    "@eslint/eslintrc": "^3.1.0",
+    "@eslint/js": "^9.6.0",
     "babel-eslint": "^10.1.0",
     "eslint": "^9.6.0",
     "eslint-plugin-json": "^4.0.0",
+    "globals": "^15.7.0",
     "htmllint": "^0.8.0",
     "lint-staged": "^15.2.7",
     "serve": "^14.2.3",
     "stylelint": "^16.6.1"
   },
   "dependencies": {
+    "@preact/signals": "^1.2.3",
     "es-module-shims": "^1.10.0",
     "htm": "^3.1.1",
-    "preact": "^10.22.0"
+    "preact": "^10.22.1"
   }
 }
