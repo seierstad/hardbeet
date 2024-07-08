@@ -1,0 +1,7 @@
+const FREQUENCY_MIN = 0;
+const FREQUENCY_MAX = 10000;
+
+export {
+    FREQUENCY_MIN,
+    FREQUENCY_MAX
+};
