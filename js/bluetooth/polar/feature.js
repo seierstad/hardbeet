@@ -1,9 +1,9 @@
 import {useEffect, useState, useContext} from "preact/hooks";
 import {html} from "htm/preact";
 
-import {AppHandlerContext} from "../../hardbeet.js";
+import {AppHandlersContext} from "hardbeet";
+
 import Visualizer from "../../visualizer.js";
-import {ACTION as STATUS_ACTION} from "../../status.js";
 
 import {
     OP_CODE,
@@ -107,7 +107,7 @@ function PolarFeature (props) {
                     message
                 }
             } = error;
-            dispatch({type: STATUS_ACTION.ERROR, payload: {text: `ERROR: ${operation}: ${message}`, timestamp: new Date()}});
+            logError(`ERROR: ${operation}: ${message}`);
         }
     }, [error]);
 

@@ -1,13 +1,14 @@
-import {useEffect, useState} from "preact/hooks";
+import {signal} from "@preact/signals";
+import {useEffect, useState, useMemo, useContext} from "preact/hooks";
 import {html} from "htm/preact";
 
-import {ACTION as STATUS_ACTION} from "../../status.js";
+import {AppHandlersContext} from "hardbeet";
 
 import {CHARACTERISTIC_UUID} from "../characteristics_and_object_types.js";
 import {GATT_SERVICE_UUID} from "../GATT_constants.js";
 
 import Service from "./service.js";
-
+import {lookupUUID} from "./functions.js";
 
 const UUID = GATT_SERVICE_UUID.DEVICE_INFORMATION;
 
@@ -16,49 +17,114 @@ const stringFromBuffer = buffer => {
     return String.fromCharCode(...(arr.subarray(0, arr.indexOf(0))));
 };
 
+
 const hexFromBuffer = buffer => {
     const arr = new Uint8Array(buffer);
     return arr.map(c => parseInt(c, 16)).join("");
 };
 
-function DeviceInformation (props) {
-    const {service, dispatch} = props;
 
-    const [manufacturerName, setManufacturerName] = useState(null);
+const getState = (initialValues = {}) => {
+    const {
+        manufacturerName = null,
+        systemId = null,
+        pnpId = null,
+        modelNumber = null,
+        serialNumber = null,
+        firmwareRevision = null,
+        softwareRevision = null
+    } = initialValues;
+
+    return {
+        manufacturerName: signal(manufacturerName),
+        systemId: signal(systemId),
+        pnpId: signal(pnpId),
+        modelNumber: signal(modelNumber),
+        serialNumber: signal(serialNumber),
+        firmwareRevision: signal(firmwareRevision),
+        softwareRevision: signal(softwareRevision)
+    };
+};
+
+const getHandlers = (state) => ({
+    setManufacturerName: name => state.manufacturerName.value = name,
+    setSystemId: systemId => state.systemId.value = systemId,
+    setPnpId: pnpId => state.pnpId.value = pnpId,
+    setModelNumber: number => state.modelNumber.value = number,
+    setSerialNumber: number => state.serialNumber.value = number,
+    setFirmwareRevision: revision => state.firmwareRevisio.value = revision,
+    setSoftwareRevision: revision => state.softwareRevisio.value = revision
+});
+
+
+const DeviceInformationService = (props = {}) => {
+    const {state, getHandlers} = props;
+    const handlers = useMemo(() => getHandlers(state));
+    const {setManufacturerName, setSystemId, setPnpId, setModelNumber, setFirmwareRevision, setSoftwareRevision, setSerialNumber} = handlers;
+    const {
+        object: service,
+        manufacturerName = {value: null},
+        systemId = {value: null},
+        modelNumber = {value: null},
+        firmwareRevision = {value: null},
+        softwareRevision = {value: null},
+        serialNumber = {value: null},
+        pnpId = {value: null}
+    } = state;
+
+    const {log: {log, logError} = {}} = useContext(AppHandlersContext);
+
     const [manufacturerNameCharacteristic, setManufacturerNameCharacteristic] = useState(null);
-
-    const [systemId, setSystemId] = useState(null);
     const [systemIdCharacteristic, setSystemIdCharacteristic] = useState(null);
-
-    const [modelNumber, setModelNumber] = useState(null);
     const [modelNumberCharacteristic, setModelNumberCharacteristic] = useState(null);
-
-    /*
-    serial number UUID is blocked in Chrome for Ubuntu (2022-03-20)
-    const [serialNumber, setSerialNumber] = useState(null);
     const [serialNumberCharacteristic, setSerialNumberCharacteristic] = useState(null);
-    */
-
-    const [firmwareRevision, setFirmwareRevision] = useState(null);
     const [firmwareRevisionCharacteristic, setFirmwareRevisionCharacteristic] = useState(null);
-
-    /*
-    const [softwareRevision, setSoftwareRevision] = useState(null);
     const [softwareRevisionCharacteristic, setSoftwareRevisionCharacteristic] = useState(null);
-    */
+    const [pnpIdCharacteristic, setPnpIdCharacteristic] = useState(null);
 
     useEffect(() => {
         (async function () {
-            await Promise.all([
-                service.getCharacteristic(CHARACTERISTIC_UUID.MANUFACTURER_NAME_STRING).then(c => setManufacturerNameCharacteristic(c)),
-                service.getCharacteristic(CHARACTERISTIC_UUID.SYSTEM_ID).then(c => setSystemIdCharacteristic(c)),
-                service.getCharacteristic(CHARACTERISTIC_UUID.MODEL_NUMBER_STRING).then(c => setModelNumberCharacteristic(c)),
-                service.getCharacteristic(CHARACTERISTIC_UUID.FIRMWARE_REVISION_STRING).then(c => setFirmwareRevisionCharacteristic(c))
-                /*
-                service.getCharacteristic(CHARACTERISTIC_UUID.SOFTWARE_REVISION_STRING).then(c => setSoftwareRevisionCharacteristic(c))
-                service.getCharacteristic(CHARACTERISTIC_UUID.SERIAL_NUMBER_STRING).then(c => setSerialNumberCharacteristic(c)),
-                */
-            ]);
+            service.getCharacteristics().then(characteristics => {
+                characteristics.map((c) => {
+                    switch (lookupUUID(c.uuid)) {
+
+                        case CHARACTERISTIC_UUID.MANUFACTURER_NAME_STRING:
+                            setManufacturerNameCharacteristic(c);
+                            break;
+
+                        case CHARACTERISTIC_UUID.SYSTEM_ID:
+                            setSystemIdCharacteristic(c);
+                            break;
+
+                        case CHARACTERISTIC_UUID.PNP_ID:
+                            setPnpIdCharacteristic(c);
+                            break;
+
+                        case CHARACTERISTIC_UUID.MODEL_NUMBER_STRING:
+                            setModelNumberCharacteristic(c);
+                            break;
+
+                        case CHARACTERISTIC_UUID.FIRMWARE_REVISION_STRING:
+                            setFirmwareRevisionCharacteristic(c);
+                            break;
+
+                        case CHARACTERISTIC_UUID.SOFTWARE_REVISION_STRING:
+                            setSoftwareRevisionCharacteristic(c);
+                            break;
+
+                        case CHARACTERISTIC_UUID.SERIAL_NUMBER_STRING:
+                            // https://webbluetoothcg.github.io/web-bluetooth/#attacks-on-devices
+                            setSerialNumberCharacteristic(c);
+                            break;
+
+                        default:
+                            log(`unknown characteristic: ${c.uuid}`);
+
+
+                    }
+                });
+
+            });
         })();
     }, []);
 
@@ -66,7 +132,7 @@ function DeviceInformation (props) {
         if (manufacturerNameCharacteristic !== null) {
             manufacturerNameCharacteristic.readValue()
                 .then(response => setManufacturerName(stringFromBuffer(response.buffer)))
-                .catch(error => dispatch({type: STATUS_ACTION.ERROR, payload: {text: "manufacturer name error: " + error.message, timestamp: new Date()}}));
+                .catch(error => logError(`manufacturer name error: ${error.message}`));
         }
     }, [manufacturerNameCharacteristic]);
 
@@ -74,15 +140,24 @@ function DeviceInformation (props) {
         if (systemIdCharacteristic !== null) {
             systemIdCharacteristic.readValue()
                 .then(response => setSystemId(hexFromBuffer(response.buffer)))
-                .catch(error => dispatch({type: STATUS_ACTION.ERROR, payload: {text: "system id error: " + error.message, timestamp: new Date()}}));
+                .catch(error => logError(`system id error: ${error.message}`));
         }
     }, [systemIdCharacteristic]);
+
+    useEffect(() => {
+        if (pnpIdCharacteristic !== null) {
+            pnpIdCharacteristic.readValue()
+                .then(response => setPnpId(hexFromBuffer(response.buffer)))
+                .catch(error => logError(`pnp id error: ${error.message}`));
+        }
+    }, [pnpIdCharacteristic]);
+
 
     useEffect(() => {
         if (modelNumberCharacteristic !== null) {
             modelNumberCharacteristic.readValue()
                 .then(response => setModelNumber(stringFromBuffer(response.buffer)))
-                .catch(error => dispatch({type: STATUS_ACTION.ERROR, payload: {text: "model number error: " + error.message, timestamp: new Date()}}));
+                .catch(error => logError(`model number error: ${error.message}`));
         }
     }, [modelNumberCharacteristic]);
 
@@ -90,30 +165,38 @@ function DeviceInformation (props) {
         if (firmwareRevisionCharacteristic !== null) {
             firmwareRevisionCharacteristic.readValue()
                 .then(response => setFirmwareRevision(stringFromBuffer(response.buffer)))
-                .catch(error => dispatch({type: STATUS_ACTION.ERROR, payload: {text: "firmware revision error: " + error.message, timestamp: new Date()}}));
+                .catch(error => logError(`firmware revision error: ${error.message}`));
         }
     }, [firmwareRevisionCharacteristic]);
 
-    /*
     useEffect(() => {
         if (softwareRevisionCharacteristic !== null) {
             softwareRevisionCharacteristic.readValue()
                 .then(response => setSoftwareRevision(stringFromBuffer(response.buffer)))
-                .catch(error => dispatch({type: STATUS_ACTION.ERROR, payload: {text: "software revision error: " + error.message, timestamp: new Date()}}));
+                .catch(error => logError(`software revision error: ${error.message}`));
         }
     }, [softwareRevisionCharacteristic]);
-    */
+
 
     return html`
         <${Service} heading="device information">
-            ${systemId !== null ? html`<p>system id: ${systemId}</p>` : null}
-            ${modelNumber !== null ? html`<p>model number: ${modelNumber}</p>` : null}
-            ${manufacturerName !== null ? html`<p>manufacturer name: ${manufacturerName}</p>` : null}
-            ${firmwareRevision !== null ? html`<p>firmware revision: ${firmwareRevision}</p>` : null}
+            <dl>
+                ${manufacturerName.value !== null ? html`<dt>manufacturer name</dt><dd>${manufacturerName}</dd>` : null}
+                ${modelNumber.value !== null ? html`<dt>model number</dt><dd>${modelNumber}</dd>` : null}
+                ${systemId.value !== null ? html`<dt>system id</dt><dd>${systemId}</dd>` : null}
+                ${pnpId.value !== null ? html`<dt>pnp id</dt><dd>${pnpId}</dd>` : null}
+                ${serialNumber.value !== null ? html`<dt>serial number</dt><dd>${serialNumber}</dd>` : null}
+                ${firmwareRevision.value !== null ? html`<dt>firmware revision</dt><dd>${firmwareRevision}</dd>` : null}
+                ${softwareRevision.value !== null ? html`<dt>software revision</dt><dd>${softwareRevision}</dd>` : null}
+            </dl>
         <//>
     `;
 }
 
-export default DeviceInformation;
 
-export {UUID};
+export {
+    DeviceInformationService,
+    getState,
+    getHandlers,
+    UUID
+};

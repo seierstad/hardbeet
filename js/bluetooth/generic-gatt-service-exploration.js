@@ -1,17 +1,17 @@
 //this.characteristicNotificationEventHandler = this.characteristicNotificationEventHandler.bind(this);
 //this.queryService = this.queryService.bind(this);
 
-import {POLAR_NAMES} from "./GATT_constants.js";
+import {GATT_DESCRIPTOR_NAME, GATT_SERVICE_NAME, POLAR_NAMES} from "./GATT_constants.js";
 
-function characteristicNotificationEventHandler (event) {
+const characteristicNotificationEventHandler = (event) => {
     this.logger.log(
         `sensor ${this.index}:
          notification from ${getCharacteristicName(event.target.uuid)} -
          ${byteArray2Array(event.target.value)} - ${byteArray2String(event.target.value)}`);
-}
+};
 
 
-function lookupNameFromUUID (uuid, dictionaries) {
+const lookupNameFromUUID = (uuid, dictionaries) => {
     let name = null;
 
     dictionaries.forEach(d => {
@@ -30,21 +30,11 @@ function lookupNameFromUUID (uuid, dictionaries) {
     }
 
     return name || uuid.toString();
-}
+};
 
-/*
-function getDescriptorName (uuid) {
-    return lookupNameFromUUID(uuid, [GATT_DESCRIPTOR_NAME]);
-}
-
-function getCharacteristicName (uuid) {
-    return lookupNameFromUUID(uuid, [POLAR_NAMES, CHARACTERISTIC_OR_OBJECT_TYPE]);
-}
-
-*/
-function getServiceName (uuid) {
-    return lookupNameFromUUID(uuid, [POLAR_NAMES, GATT_SERVICE_NAME]);
-}
+const getDescriptorName = uuid => lookupNameFromUUID(uuid, [GATT_DESCRIPTOR_NAME]);
+const getCharacteristicName = uuid => lookupNameFromUUID(uuid, [POLAR_NAMES, CHARACTERISTIC_OR_OBJECT_TYPE]);
+const getServiceName = uuid => lookupNameFromUUID(uuid, [POLAR_NAMES, GATT_SERVICE_NAME]);
 
 
 /*

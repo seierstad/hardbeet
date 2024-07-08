@@ -1,4 +1,4 @@
-import Sensor from "../sensor/sensor.js";
+import {Device} from "../device/device.js";
 
 import {POLAR_MEASUREMENT_DATA_SERVICE_UUID} from "./codes.js";
 
@@ -10,8 +10,10 @@ const PolarSensor = props => {
         errorFn: () => console.log("her må det debugges...")
     }];
 
-    return Sensor({...props, additionalServices});
+    return Device({...props, additionalServices});
 };
 
 
-export default PolarSensor;
+export {
+    PolarSensor
+};

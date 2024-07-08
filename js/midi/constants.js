@@ -1,3 +1,5 @@
+const makeLookup = obj => Object.entries(obj).reduce((acc, [a, b]) => ({...acc, [b]: a}), {});
+
 const CHANNELS = ["all", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 
 const PORT = {
@@ -23,6 +25,31 @@ const MESSAGE_TYPE = {
     "SYSTEM_EXCLUSIVE": 0xF0
 };
 
+const MESSAGE_TYPE_LOOKUP = makeLookup(MESSAGE_TYPE);
+
+const DATA_LENGTH = {
+    0x80: 2,
+    0x90: 2,
+    0xA0: 2,
+    0xB0: 2,
+    0xC0: 1,
+    0xD0: 1,
+    0xE0: 2,
+    0xF1: 1,
+    0xF2: 2,
+    0xF3: 1,
+    0xF4: 0,
+    0xF5: 0,
+    0xF6: 0,
+    0xF7: 0,
+    0xF8: 0,
+    0xFA: 0,
+    0xFB: 0,
+    0xFC: 0,
+    0xFE: 0,
+    0xFF: 0
+};
+
 const SYSEX_TYPE = {
     "SYSTEM_EXCLUSIVE_START": 0xF0,
     "TIME_CODE": 0xF1,
@@ -37,6 +64,8 @@ const SYSEX_TYPE = {
     "ACTIVE_SENSING": 0xFE,
     "RESET": 0xFF
 };
+
+const SYSEX_TYPE_LOOKUP = makeLookup(SYSEX_TYPE);
 
 const CONTROL = {
     "BANK_SELECT_MSB": 0x00,
@@ -131,12 +160,17 @@ const CONTROL = {
     "POLY_OPERATION": 0x7F
 };
 
+const CONTROL_LOOKUP = makeLookup(CONTROL);
 
 export {
     CHANNELS,
     PORT,
     MESSAGE_TYPE,
+    MESSAGE_TYPE_LOOKUP,
     SYSEX_TYPE,
-    CONTROL
+    SYSEX_TYPE_LOOKUP,
+    CONTROL,
+    CONTROL_LOOKUP,
+    DATA_LENGTH
 };
 

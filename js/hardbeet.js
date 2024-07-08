@@ -4,67 +4,22 @@ import {useReducer, useEffect, useContext} from "preact/hooks";
 import {html} from "htm/preact";
 
 import {Log} from "./log/log.js";
+import {MidiAccessProvider} from "./midi/context.js";
 import {Midi} from "./midi/midi.js";
+import {Bluetooth} from "./bluetooth/bluetooth.js";
 
 import {getState} from "./state.js";
 import {getHandlers} from "./handlers.js";
 
 import {AudioOutput} from "./audio/output.js";
 
-/*
-import Sensors, {
-    reducer as devicesReducer,
-    initialState as devicesInitialState
-} from "./bluetooth/sensor/sensors.js";
 
-
-
-import AudioOutput, {
-    reducer as audioReducer,
-    ACTION as AUDIO_ACTION,
-    initialState as audioInitialState
-} from "./audio/output.js";
-*/
 const AppStateContext = createContext();
 const AppHandlersContext = createContext();
 
 const appState = getState();
 const appHandlers = getHandlers(appState);
 
-/*
-const initialState = {
-    devices: devicesInitialState,
-    status: statusInitialState,
-    audio: audioInitialState,
-    midi: midiInitialState,
-    bluetoothAvailable: null,
-    midiAvailable: null,
-    interactive: false
-};
-
-const rootReducer = (state, action = {}) => {
-    const {type, payload = {}} = action;
-    const {audioContext = false} = payload;
-
-    switch (type) {
-        case ACTION.SET_INTERACTIVE:
-            return {
-                ...state,
-                audioContext,
-                interactive: true
-            };
-    }
-};
-
-const reducer = (state, action = {}) => {
-    return {
-        ...rootReducer(state, action),
-        devices: devicesReducer(state.devices, action),
-        audio: audioReducer(state.audio, action),
-        midi: midiReducer(state.midi, action)
-    };
-};
-*/
 
 const Hardbeet = () => {
     const handlers = useContext(AppHandlersContext);
@@ -74,50 +29,8 @@ const Hardbeet = () => {
         setInteractive,
         log: {
             log
-        },
-        bluetooth: {
-            setAvailable: setBTAvailable
         }
     } = handlers;
-
-    useEffect(() => {
-        log("testing if bluetooth is available");
-
-        if (!navigator.bluetooth || typeof navigator.bluetooth.getAvailability !== "function") {
-            setBTAvailable(false);
-        } else {
-            navigator.bluetooth.addEventListener("advertisementreceived", event => {
-                log("bluetooth advertisement received: " + event);
-            });
-            navigator.bluetooth.addEventListener("availabilitychanged", event => {
-                log("bluetooth availability changed: " + event);
-            });
-
-            navigator.bluetooth.getAvailability().then(
-                isAvailable => setBTAvailable(isAvailable),
-                rejection => log("bluetooth is not available" + (rejection ? (": " + rejection) : ""))
-            );
-        }
-
-        return () => {
-            navigator.bluetooth.removeEventListener("advertisementreceived");
-            navigator.bluetooth.removeEventListener("availabilitychanged");
-        };
-    }, []);
-
-    useEffect(() => {
-        if (state.bluetooth.available.value !== null) {
-            log(`bluetooth is ${state.bluetooth.available.value ? "" : "not "}available`);
-
-        }
-    }, [state.bluetooth.available.value]);
-
-
-    useEffect(() => {
-        if (state.interactive.value) {
-            log("interactive!");
-        }
-    }, [state.interactive.value]);
 
     const firstClickHandler = () => {
         if (!state.interactive.value) {
@@ -125,10 +38,23 @@ const Hardbeet = () => {
         }
     };
 
+    useEffect(() => {
+        document.addEventListener("click", firstClickHandler);
+        document.addEventListener("pointer", firstClickHandler);
+    }, []);
+
+    useEffect(() => {
+        if (state.interactive.value) {
+            log("interactive!");
+            document.removeEventListener("click", firstClickHandler);
+            document.removeEventListener("pointer", firstClickHandler);
+        }
+    }, [state.interactive.value]);
 
     return html`
-        <main onClick=${firstClickHandler}>
+        <main>
             <${Log} entries=${state.log.entries} title=${state.log.title} />
+            <${Bluetooth} />
             <${Midi} state=${state.midi} />
             ${state.interactive.value ? html`<${AudioOutput} state=${state.audio}/>` : null}
         </main>
@@ -186,7 +112,9 @@ render(
     html`
         <${AppStateContext.Provider} value=${appState}>
             <${AppHandlersContext.Provider} value=${appHandlers}>
-                <${Hardbeet} />
+                <${MidiAccessProvider}>
+                    <${Hardbeet} />
+                <//>
             <//>
         <//>
     `,

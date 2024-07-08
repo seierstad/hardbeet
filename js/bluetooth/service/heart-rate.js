@@ -26,7 +26,7 @@ const BODY_SENSOR_LOCATIONS = {
     0x0006: "Foot"
 };
 
-function parseHeartRate (data) {
+const parseHeartRate = (data) => {
     const flags = data.getUint8(0);
     const rate16Bits = flags & FLAG.RATE_16_BITS;
     const result = {};
@@ -60,21 +60,43 @@ function parseHeartRate (data) {
     }
     result.datetime = new Date();
     return result;
+};
+
+const getState = (initialValues = {}) => {
+    const {
+        heartRate = null,
+        rrIntervals = [],
+        contactDetected = null,
+        energyExpended = null,
+        sensorLocation = null
+    } = initialValues;
+
+    return {
+        heartRate: signal(heartRate),
+        rrIntervals: signal(rrIntervals),
+        contactDetected: signal(contactDetected),
+        energyExpanded: signal(energyExpanded),
+        sensorLocation: signal(sensorLocation)
+    };
 }
 
+const getHandlers = state => ({
+    setHeartRate: heartRate => state.heartRate.value = heartRate,
+    setRRIntervals: rrIntervals => state.rrIntervals.value = rrIntervals,
+    setContactDetected: contactDetected => state.contactDetected.value = contactDetected,
+    setEnergyExpanded: energyExpanded => state.energyExpanded.value = energyExpanded,
+    setSensorLocation: sensorLocation => state.sensorLocation.value = sensorLocation
+});
 
-function HeartRateService (props) {
-    const {service} = props;
+
+const HeartRateService = (props = {}) => {
+    const {state = {}, getHandlers} = props;
+    const handlers = useMemo(() => getHandlers(state));
+    const {heartRate, rrIntervals, contactDetected, energyExpanded, sensorLocation} = state;
+    const {setHeartRate, setRRIntervals, setContactDetected, setEnergyExpanded, setSensorLocation} = handlers;
+
     const [heartRateCharacteristic, setHeartRateCharacteristic] = useState(null);
-    const [heartRate, setHeartRate] = useState(null);
-
     const [sensorLocationCharacteristic, setSensorLocationCharacteristic] = useState(null);
-    const [sensorLocation, setSensorLocation] = useState(null);
-
-    const [rrIntervals, setRRIntervals] = useState(null);
-    const [contactDetected, setContactDetected] = useState(null);
-    const [energyExpended, setEnergyExpended] = useState(null);
-
 
     useEffect(() => {
         (async function () {
@@ -119,9 +141,17 @@ function HeartRateService (props) {
     useEffect(() => {
         if (heartRateCharacteristic !== null) {
             heartRateCharacteristic.addEventListener("characteristicvaluechanged", heartRateChangeHandler);
-            heartRateCharacteristic.startNotifications();
+            if (heartRateCharacteristic.properties.notify) {
+                heartRateCharacteristic.startNotifications();
+            }
 
-            return () => heartRateCharacteristic.removeEventListener("characteristicvaluechanged", heartRateChangeHandler);
+            return () => {
+                if (heartRateCharacteristic.properties.notify) {
+                    heartRateCharacteristic.stopNotifications();
+                }
+
+                heartRateCharacteristic.removeEventListener("characteristicvaluechanged", heartRateChangeHandler);
+            };
         }
     }, [heartRateCharacteristic]);
 
@@ -134,25 +164,21 @@ function HeartRateService (props) {
 
     return html`
         <${Service} heading="heart rate">
-            ${sensorLocation !== null ? html`
-                <div class="sensor-location">sensor location: ${BODY_SENSOR_LOCATIONS[sensorLocation] || "Unknown"}</div>
-            ` : null}
-            ${heartRate !== null ? html`
-                <div class="heart-rate">heart rate: ${heartRate}</div>
-            ` : null}
-            ${rrIntervals !== null ? html`
-                <div class="rr-intervals">rr intevals: ${rrIntervals.join(", ")}</div>
-            ` : null}
-            ${contactDetected !== null ? html`
-                <div class="contact-detected">contact detected: ${contactDetected}</div>
-            ` : null}
-            ${energyExpended !== null ? html`
-                <div class="energy-expended">energy expended: ${energyExpended}</div>
-            ` : null}
+            <dl>
+                ${sensorLocation !== null ? html`<dt>sensor location</dt><dd>${BODY_SENSOR_LOCATIONS[sensorLocation] || "Unknown"}</dd>` : null}
+                ${heartRate !== null ? html`<dt>heart rate</dt><dd>${heartRate}</dd>` : null}
+                ${rrIntervals !== null ? html`<dt>rr intevals</dt><dd>${rrIntervals.join(", ")}</dd>` : null}
+                ${contactDetected !== null ? html`<dt>contact detected</dt><dd>${contactDetected}</dd>` : null}
+                ${energyExpended !== null ? html`<dt>energy expended</dt><dd>${energyExpended}</dd>` : null}
+            </dl>
         <//>
     `;
-}
+};
 
-export default HeartRateService;
 
-export {UUID};
+export {
+    HeartRateService,
+    UUID,
+    getState,
+    getHandlers
+};

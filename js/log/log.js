@@ -1,6 +1,8 @@
 import {html} from "htm/preact";
 
-import {LEVEL_CLASS} from "./constants.js";
+import {LEVEL_CLASS, LOG_LEVEL} from "./constants.js";
+import {getHandlers} from "./handlers.js";
+import {getState} from "./state.js";
 
 
 const constantWidthTimeText = (timestamp, locale = "no-NO") => {
@@ -12,7 +14,8 @@ const LogEntry = props => {
     const {
         text = "",
         timestamp,
-        level
+        level,
+        type = null
     } = props;
 
     return html`
@@ -20,14 +23,14 @@ const LogEntry = props => {
             <time class="timestamp" datetime=${timestamp.toISOString()}>
                 ${constantWidthTimeText(timestamp)}
             </time>
-            <span>${text}</span>
+            ${(type === "code") ? html`<code>${text}</code>` : html`<span>${text}</span>`}
         </li>
     `;
 };
 
-const Log = ({entries = [], title = "", }) => {
+const Log = ({entries = {value: []}, title = "", classNames = []}) => {
     return html`
-        <section id="status">
+        <section class=${["log", ...(typeof classNames === "string" ? [classNames] : classNames)].join(" ")}>
             <header>
                 <h2>${title.value}</h2>
             </header>
@@ -40,5 +43,8 @@ const Log = ({entries = [], title = "", }) => {
 
 
 export {
-    Log
+    Log,
+    getState,
+    getHandlers,
+    LOG_LEVEL
 };

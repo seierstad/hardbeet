@@ -1,7 +1,8 @@
+import {signal} from "@preact/signals";
 import {useEffect, useState} from "preact/hooks";
 import {html} from "htm/preact";
 
-import {ACTION as STATUS_ACTION} from "../../status.js";
+import {AppStateContext, AppHandlersContext} from "hardbeet";
 
 import Service from "../service/service.js";
 import PolarFeature, {ACTION as FEATURE_ACTION, reducer as featureReducer} from "./feature.js";
@@ -24,8 +25,16 @@ import {
 
 const UUID = POLAR_MEASUREMENT_DATA_SERVICE_UUID;
 
-const initialState = {
-    features: []
+const getState = (initialValues = {}) => {
+    return {
+        features: signal([])
+    };
+};
+
+const getHandlers = (state) => {
+    return {
+
+    };
 };
 
 const ACTION = {
@@ -65,19 +74,20 @@ const reducer = (state = initialState, action = {}) => {
 };
 
 
-function PolarService (props) {
-    const {dispatch, state, sensorId, index} = props;
+const PolarService = (props = {}) => {
+    const {log: {log, logError} = {}} = useContext(AppHandlersContext);
+    const {state, sensorId, index} = props;
     const {service, features = []} = state;
     const [controlPointCharacteristic, setControlPointCharacteristic] = useState(null);
     const [dataCharacteristic, setDataCharacteristic] = useState(null);
     const [parameterRequest, setParameterRequest] = useState(null);
 
     const handleControlPointError = (error) => {
-        dispatch({type: STATUS_ACTION.ERROR, payload: {text: `Sensor ${index} control point error: ` + error, timestamp: new Date()}});
+        logError(`Sensor ${index} control point error: ${error}`);
     };
 
     const handleDataCharacteristicError = (error) => {
-        dispatch({type: STATUS_ACTION.ERROR, payload: {text: `Sensor ${index} PMD Data characteristic error: ` + error, timestamp: new Date()}});
+        logError(`Sensor ${index} PMD Data characteristic error: ${error}`);
     };
 
     useEffect(() => {
@@ -281,6 +291,8 @@ function PolarService (props) {
                 <h3>features</h3>
                 ${Object.entries(features).map(([code, {parameters}]) => html`
                     <${PolarFeature}
+                        log=${log}
+                        logError=${logError}
                         commandFn=${featureCommandHandler}
                         controlPoint=${controlPointCharacteristic}
                         featureCode=${code}
@@ -294,11 +306,10 @@ function PolarService (props) {
     `;
 }
 
-export default PolarService;
 
 export {
     UUID,
-    initialState,
-    ACTION,
-    reducer
+    getState,
+    getHandlers,
+    PolarService
 };

@@ -1,7 +1,9 @@
-import {useEffect, useState} from "preact/hooks";
+import {signal} from "@preact/signals";
+import {useEffect, useMemo, useState, useContext} from "preact/hooks";
 import {html} from "htm/preact";
 
-import {ACTION as STATUS_ACTION} from "../../status.js";
+import {AppHandlersContext} from "hardbeet";
+
 import {GATT_SERVICE_UUID} from "../GATT_constants.js";
 
 import Service from "./service.js";
@@ -9,16 +11,37 @@ import Service from "./service.js";
 
 const UUID = GATT_SERVICE_UUID.USER_DATA;
 
-function UserData (props) {
-    const {service, dispatch} = props;
+const getState = (initialValues = {}) => {
+    const {
+        firstName = null,
+        lastName = null
+    } = initialValues;
 
-    const [firstName, setFirstName] = useState(null);
+    return {
+        firstName: signal(firstName),
+        lastName: signal(lastName)
+    };
+};
+
+const getHandlers = (state) => ({
+    setFirstName: name => state.firstName.value = name,
+    setLastName: name => state.lastName.value = name
+});
+
+
+const UserDataService = (props = {}) => {
+    const {state, getHandlers} = props;
+    const handlers = useMemo(() => getHandlers(state));
+    const {log: {log, logError} = {}} = useContext(AppHandlersContext);
+
     const [firstNameCharacteristic, setFirstNameCharacteristic] = useState(null);
 
     useEffect(() => {
         (async function () {
             await Promise.all([
-                service.getCharacteristic("first_name").then(c => setFirstNameCharacteristic(c))
+                service.getCharacteristic("first_name")
+                    .then(c => setFirstNameCharacteristic(c))
+                    .catch(e => logError(e.message))
             ]);
         })();
     }, []);
@@ -27,21 +50,21 @@ function UserData (props) {
         if (firstNameCharacteristic !== null) {
             firstNameCharacteristic.readValue()
                 .then(firstName => setFirstName(firstName.getUint8(0)))
-                .catch(error => {
-                    dispatch({type: STATUS_ACTION.ERROR, payload: {text: error.message, timestamp: new Date()}});
-                });
+                .catch(error => logError(error.message));
         }
     }, [firstNameCharacteristic]);
 
     return html`
         <${Service} heading="user data">
-            ${firstName === null ? null : html`<p class="first-name>first name: ${firstName}</p>`}
+            ${firstName.value === null ? null : html`<p class="first-name>first name: ${firstName}</p>`}
         <//>
     `;
-}
+};
 
-export default UserData;
 
 export {
-    UUID
+    UserDataService,
+    UUID,
+    getHandlers,
+    getState
 };

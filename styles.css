@@ -1,38 +1,57 @@
 
-#status {
+.log {
 	background: #ffc;
 	max-height: 10rem;
 	overflow-y: scroll;
 	overscroll-behavior-y: contain;
+
+	.jamstik > & {
+		max-height: 40rem;
+	}
+
+	header {
+		background: #ffc;
+		padding-right: 1rem;
+	}
+
+	.messages {
+		scroll-snap-align: end;
+	}
 }
 
-#status .log-entry {
+.log-entry {
 	padding: 0;
 	margin: 0;
-}
-#status .log-entry:last-child {
-	scroll-snap-align: end;
+
+	&:last-child {
+		scroll-snap-align: end;
+	}
+
+	&.error {
+		border: 1px solid red;
+		border-radius: .3em;
+		color: red;
+	}
+
+	.timestamp {
+		padding-right: 1rem;
+
+		&::after {
+			content: ":";
+		}
+
+	}
 }
 
-#status header {
-	background: #ffc;
-	padding-right: 1rem;
-}
-
-#status .timestamp {
-	padding-right: 1rem;
-}
-#status .timestamp::after {
-	content: ":";
-}
-
-#status .messages {
-	scroll-snap-align: end;
-}
 
 .service {
 	display: inline-block;
+
+	&.jamstik {
+		display: block;
+	}
 }
+
 
 /*
 .visualizer {
