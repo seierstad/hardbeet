@@ -31,6 +31,7 @@ const getState = (initialValues = {}) => {
         pnpId = null,
         modelNumber = null,
         serialNumber = null,
+        hardwareRevision = null,
         firmwareRevision = null,
         softwareRevision = null
     } = initialValues;
@@ -41,6 +42,7 @@ const getState = (initialValues = {}) => {
         pnpId: signal(pnpId),
         modelNumber: signal(modelNumber),
         serialNumber: signal(serialNumber),
+        hardwareRevision: signal(hardwareRevision),
         firmwareRevision: signal(firmwareRevision),
         softwareRevision: signal(softwareRevision)
     };
@@ -52,20 +54,22 @@ const getHandlers = (state) => ({
     setPnpId: pnpId => state.pnpId.value = pnpId,
     setModelNumber: number => state.modelNumber.value = number,
     setSerialNumber: number => state.serialNumber.value = number,
-    setFirmwareRevision: revision => state.firmwareRevisio.value = revision,
-    setSoftwareRevision: revision => state.softwareRevisio.value = revision
+    setHardwareRevision: revision => state.hardwareRevision.value = revision,
+    setFirmwareRevision: revision => state.firmwareRevision.value = revision,
+    setSoftwareRevision: revision => state.softwareRevision.value = revision
 });
 
 
 const DeviceInformationService = (props = {}) => {
     const {state, getHandlers} = props;
     const handlers = useMemo(() => getHandlers(state));
-    const {setManufacturerName, setSystemId, setPnpId, setModelNumber, setFirmwareRevision, setSoftwareRevision, setSerialNumber} = handlers;
+    const {setManufacturerName, setSystemId, setPnpId, setModelNumber, setHardwareRevision, setFirmwareRevision, setSoftwareRevision, setSerialNumber} = handlers;
     const {
         object: service,
         manufacturerName = {value: null},
         systemId = {value: null},
         modelNumber = {value: null},
+        hardwareRevision = {value: null},
         firmwareRevision = {value: null},
         softwareRevision = {value: null},
         serialNumber = {value: null},
@@ -78,6 +82,7 @@ const DeviceInformationService = (props = {}) => {
     const [systemIdCharacteristic, setSystemIdCharacteristic] = useState(null);
     const [modelNumberCharacteristic, setModelNumberCharacteristic] = useState(null);
     const [serialNumberCharacteristic, setSerialNumberCharacteristic] = useState(null);
+    const [hardwareRevisionCharacteristic, setHardwareRevisionCharacteristic] = useState(null);
     const [firmwareRevisionCharacteristic, setFirmwareRevisionCharacteristic] = useState(null);
     const [softwareRevisionCharacteristic, setSoftwareRevisionCharacteristic] = useState(null);
     const [pnpIdCharacteristic, setPnpIdCharacteristic] = useState(null);
@@ -102,6 +107,10 @@ const DeviceInformationService = (props = {}) => {
 
                         case CHARACTERISTIC_UUID.MODEL_NUMBER_STRING:
                             setModelNumberCharacteristic(c);
+                            break;
+
+                        case CHARACTERISTIC_UUID.HARDWARE_REVISION_STRING:
+                            setHardwareRevisionCharacteristic(c);
                             break;
 
                         case CHARACTERISTIC_UUID.FIRMWARE_REVISION_STRING:
@@ -162,6 +171,14 @@ const DeviceInformationService = (props = {}) => {
     }, [modelNumberCharacteristic]);
 
     useEffect(() => {
+        if (hardwareRevisionCharacteristic !== null) {
+            hardwareRevisionCharacteristic.readValue()
+                .then(response => setHardwareRevision(stringFromBuffer(response.buffer)))
+                .catch(error => logError(`hardware revision error: ${error.message}`));
+        }
+    }, [hardwareRevisionCharacteristic]);
+
+    useEffect(() => {
         if (firmwareRevisionCharacteristic !== null) {
             firmwareRevisionCharacteristic.readValue()
                 .then(response => setFirmwareRevision(stringFromBuffer(response.buffer)))
@@ -186,6 +203,7 @@ const DeviceInformationService = (props = {}) => {
                 ${systemId.value !== null ? html`<dt>system id</dt><dd>${systemId}</dd>` : null}
                 ${pnpId.value !== null ? html`<dt>pnp id</dt><dd>${pnpId}</dd>` : null}
                 ${serialNumber.value !== null ? html`<dt>serial number</dt><dd>${serialNumber}</dd>` : null}
+                ${hardwareRevision.value !== null ? html`<dt>hardware revision</dt><dd>${hardwareRevision}</dd>` : null}
                 ${firmwareRevision.value !== null ? html`<dt>firmware revision</dt><dd>${firmwareRevision}</dd>` : null}
                 ${softwareRevision.value !== null ? html`<dt>software revision</dt><dd>${softwareRevision}</dd>` : null}
             </dl>
