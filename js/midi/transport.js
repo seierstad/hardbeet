@@ -1,4 +1,4 @@
-import {useLayoutEffect, useState} from "preact/hooks";
+import {useLayoutEffect} from "preact/hooks";
 import {html} from "htm/preact";
 
 import {SYSEX_TYPE} from "./constants.js";
@@ -12,7 +12,6 @@ const TRANSPORT_STATE = {
 
 function MidiTransport (props) {
     const {port, handlers, command, running} = props;
-    console.log(props);
 
     const {
         setCommand,

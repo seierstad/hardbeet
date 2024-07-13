@@ -1,5 +1,4 @@
 import {
-    MESSAGE_TYPE,
     SYSEX_TYPE
 } from "../constants.js";
 

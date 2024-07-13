@@ -43,7 +43,8 @@ const Carrier = (props = {}) => {
             </label>
         </div>
     `;
-}
+};
+
 
 export {
     Carrier

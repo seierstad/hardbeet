@@ -5,7 +5,7 @@ import {DEFAULT} from "./defaults.js";
 
 const getState = (initialValues = {}) => {
     const {
-        toggle = DEFAULT.TOGGLE,
+        toggle = DEFAULT.TOGGLE
     } = initialValues;
 
 

@@ -8,7 +8,7 @@ import {Constant} from "./constant/constant.js";
 import {Noise} from "./noise/noise.js";
 
 
-const AudioOutput = (props = {}) => {
+const AudioOutput = () => {
     const {audio: state} = useContext(AppStateContext);
     const {audio: handlers} = useContext(AppHandlersContext);
 
@@ -32,11 +32,6 @@ const AudioOutput = (props = {}) => {
 };
 
 /*
-
-
-
-
-
 
     initialize () {
         if (this.ctx === null) {
@@ -102,7 +97,6 @@ const AudioOutput = (props = {}) => {
     }
 }
 */
-
 
 export {
     AudioOutput

@@ -30,8 +30,7 @@ const Constant = (props = {}) => {
             <${Toggle} name="toggle-constant" legend="toggle" options=${[["off"], ["on"]]} selected=${toggle} default="off" onChange=${handlers.toggle} />
         </div>
     `;
-
-}
+};
 
 
 export {

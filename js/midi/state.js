@@ -39,10 +39,8 @@ const getState = (initialState = {}) => {
     } = initialState;
 
     return {
-        inputs: [...inputs],
-        outputs: [...outputs],
-        inputCount: signal(0),
-        outputCount: signal(0),
+        inputs: signal([...inputs]),
+        outputs: signal([...outputs]),
         available: signal(available)
     };
 };

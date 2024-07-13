@@ -1,4 +1,4 @@
-import {signal, computed, batch} from "@preact/signals";
+import {signal} from "@preact/signals";
 
 import {DEFAULT} from "./defaults.js";
 

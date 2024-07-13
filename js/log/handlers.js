@@ -1,5 +1,3 @@
-import {signal} from "@preact/signals";
-
 import {DEFAULT} from "./defaults.js";
 import {LOG_LEVEL} from "./constants.js";
 

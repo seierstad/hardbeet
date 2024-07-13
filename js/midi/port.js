@@ -13,12 +13,11 @@ function MidiPort (props) {
         open,
         connected,
         handlers: {
-            setOpen,
-            setConnected
+            setOpen
         } = {}
     } = props;
 
-    const {log: {log, logError} = {}} = useContext(AppHandlersContext);
+    const {log: {log} = {}} = useContext(AppHandlersContext);
 
     const firstRender = useRef(true);
 
@@ -42,10 +41,21 @@ function MidiPort (props) {
         }
     };
 
+    const customPortStateHandler = event => {
+        portStateHandler({...event, port: event.detail.port});
+    };
+
     useEffect(() => {
         port.addEventListener("statechange", portStateHandler);
         return () => port.removeEventListener("statechange", portStateHandler);
     }, [port.id]);
+
+
+    useEffect(() => {
+        port.addEventListener("hardbeet_custom_statechange", customPortStateHandler);
+        return () => port.removeEventListener("hardbeet_custom_statechange", customPortStateHandler);
+    }, [port.id]);
+
 
     useLayoutEffect(() => {
         if (open.value !== null) {

@@ -1,4 +1,4 @@
-import {useState, useEffect, useMemo} from "preact/hooks";
+import {useMemo} from "preact/hooks";
 import {html} from "htm/preact";
 
 import {MidiPort} from "./port.js";
@@ -79,25 +79,6 @@ export {
 
         if (this.samplerate !== samplerate) {
             this.samplerate = samplerate;
-        }
-    }
-
-    checkboxHandler (event) {
-        const {
-            target: {
-                value,
-                checked
-            } = {}
-        } = event;
-        const port = this.outputs.find(p => p.port.id === value);
-        const velocity = 127;
-        const note = 65;
-        if (port) {
-            if (checked) {
-                port.port.open().then(p => p.send([MESSAGE_TYPE.NOTE_ON, note, velocity]));
-            } else {
-                port.port.send([MESSAGE_TYPE.NOTE_OFF, note, velocity]);
-            }
         }
     }
 }

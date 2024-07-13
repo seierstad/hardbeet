@@ -1,6 +1,6 @@
 import "preact/debug";
 import {render, createContext} from "preact";
-import {useReducer, useEffect, useContext} from "preact/hooks";
+import {useEffect, useContext} from "preact/hooks";
 import {html} from "htm/preact";
 
 import {Log} from "./log/log.js";
@@ -62,13 +62,10 @@ const Hardbeet = () => {
 };
 
 
-
 /*
 
                     ${devices.map(({device}) => html`<p>${device.name}, ${device.type}</p>`)}
                     <${Sensors} bluetoothAvailable=${bluetoothAvailable} bluetooth=${navigator.bluetooth} devices=${devices} dispatch=${dispatch} functions=${this.dataFunctions} />
-
-
 
 
 dataCallbackFn (dataType, data, parameters) {

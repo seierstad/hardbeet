@@ -35,7 +35,7 @@ const Log = ({entries = {value: []}, title = "", classNames = []}) => {
                 <h2>${title.value}</h2>
             </header>
             <ol class="log_entries" reversed>
-                ${entries.value.map((entry, index) => html`<${LogEntry} key=${entry.timestamp} ...${entry} />`)}
+                ${entries.value.map(entry => html`<${LogEntry} key=${entry.timestamp} ...${entry} />`)}
             </ol>
         </section>
     `;

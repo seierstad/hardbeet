@@ -1,0 +1,44 @@
+[
+	{
+		"caption": "Arduino",
+		"mnemonic": "A",
+		"id": "arduino",
+		"children":
+		[
+			{
+				"caption": "Serial Port",
+				"id": "stino_serial_port",
+				"children":
+				[
+					{
+						"caption": "Refresh",
+						"id": "stino_refresh_serials",
+						"command": "stino_refresh_serials"
+					},
+					{"caption": "-"},
+					{
+						"caption": "/dev/cu.URT2",
+						"id": "stino_serial_/dev/cu.URT2",
+						"command": "stino_select_serial",
+						"args": {"serial_port": "/dev/cu.URT2"},
+						"checkbox": true
+					},
+					{
+						"caption": "/dev/cu.BLTH",
+						"id": "stino_serial_/dev/cu.BLTH",
+						"command": "stino_select_serial",
+						"args": {"serial_port": "/dev/cu.BLTH"},
+						"checkbox": true
+					},
+					{
+						"caption": "/dev/cu.URT1",
+						"id": "stino_serial_/dev/cu.URT1",
+						"command": "stino_select_serial",
+						"args": {"serial_port": "/dev/cu.URT1"},
+						"checkbox": true
+					}
+				]
+			}
+		]
+	}
+]

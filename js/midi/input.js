@@ -1,4 +1,4 @@
-import {useState, useEffect, useMemo} from "preact/hooks";
+import {useMemo} from "preact/hooks";
 import {html} from "htm/preact";
 
 import {MidiPort} from "./port.js";
@@ -21,7 +21,7 @@ const MidiInput = props => {
     const handlers = useMemo(() => getInputPortHandlers(port.id), [port.id]);
 
     return html`<${MidiPort} port=${port} handlers=${handlers} open=${open} connected=${connected} />`;
-}
+};
 
 
 export {
