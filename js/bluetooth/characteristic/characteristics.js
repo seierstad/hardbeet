@@ -1,21 +1,20 @@
 import {html} from "htm/preact";
 
-import {Characteristic} from "./characteristic.js";
-import {getCharacteristicSpecificView} from "./characteristic-specific.js";
+import {GenericCharacteristic} from "./characteristic.js";
 
 
 const Characteristics = (props = {}) => {
     const {
-        state: characteristics = [],
+        state: characteristics = {value: []},
+        serviceHandlers = {},
         getHandlers
     } = props;
 
-    return characteristics.length > 0 ? html`
+    return characteristics.value.length > 0 ? html`
         <ul>
-        ${characteristics.map(c => {
-            const View = getCharacteristicSpecificView(c.uuid);
-            return html`<li><${View} getHandlers=${getHandlers} key=${c.uuid} state=${c} /></li>`;
-        })}
+        ${characteristics.value.map(c => html`
+            <li><${GenericCharacteristic} getHandlers=${getHandlers} serviceHandlers=${serviceHandlers} key=${c.uuid} state=${c} /></li>
+        `)}
         </ul>
     ` : null;
 

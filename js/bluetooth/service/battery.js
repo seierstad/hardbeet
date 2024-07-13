@@ -33,35 +33,10 @@ const BatteryService = (props = {}) => {
     const handlers = useMemo(() => getHandlers(state));
     const {log: {logError} = {}} = useContext(AppHandlersContext);
 
-    const handleBatteryLevelChanged = (event) => handlers.setBatteryLevel(event.target.value.getUint8(0));
-
-    const handleBatteryLevelCharacteristic = (characteristic) => {
-        const {
-            properties: {
-                notify,
-                read
-            } = {}
-        } = characteristic;
-
-        if (read) {
-            characteristic.readValue().then(batteryLevelData => handlers.setBatteryLevel(batteryLevelData.getUint8(0)));
-        }
-
-        if (notify) {
-            characteristic.addEventListener("characteristicvaluechanged", handleBatteryLevelChanged);
-            characteristic.startNotifications();
-        }
-    };
 
     useLayoutEffect(() => {
-        service.getCharacteristic("battery_level").then(handlers.addCharacteristic).catch(logError);
+        service.getCharacteristics().then(handlers.addCharacteristics).catch(logError);
     }, []);
-
-    useLayoutEffect(() => {
-        if (characteristics.value.length > 0) {
-            handleBatteryLevelCharacteristic(characteristics.value[0].object);
-        }
-    }, [characteristics.value]);
 
     useLayoutEffect(() => {
         if (batteryLevel.value !== null) {
@@ -71,6 +46,7 @@ const BatteryService = (props = {}) => {
 
     return html`
         <${Service} heading="battery">
+            <${Characteristics} state=${characteristics} serviceHandlers=${handlers} getHandlers=${handlers.getCharacteristicHandlers} />
             ${batteryLevel === null ? null : html`<p class="battery-level">battery level: ${batteryLevel}</p>`}
         <//>
     `;

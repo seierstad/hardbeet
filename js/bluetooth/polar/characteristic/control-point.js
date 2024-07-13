@@ -30,9 +30,8 @@ const getHandlers = (state = getState()) => {
 
 
 const PolarControlPointCharacteristic = (props = {}) => {
-    const {state = {}, getHandlers} = props;
+    const {state = {}, handlers, serviceHandlers} = props;
     const {object: characteristic, features} = state;
-    const handlers = useMemo(() => getHandlers(state));
     const logError = (e) => console.error(e);
     const handleControlPointError = (error) => {
         logError(`Sensor ${index} control point error: ${error}`);
@@ -71,6 +70,7 @@ const PolarControlPointCharacteristic = (props = {}) => {
 
 
     const handleControlPointChanged = (event) => {
+        /*
         switch (event.target.value.getUint8(0)) {
 
             case CONTROL_POINT_RESPONSE_TYPE.FEATURE_READ:
@@ -124,6 +124,7 @@ const PolarControlPointCharacteristic = (props = {}) => {
                 //dispatch({type: STATUS_ACTION.ERROR, payload: {text: "unknown control point response from sensor " + index, timestamp: new Date()}});
 
         }
+        */
     };
 
 

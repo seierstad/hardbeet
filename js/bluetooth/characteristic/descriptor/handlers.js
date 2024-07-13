@@ -34,7 +34,7 @@ const getDescriptorHandlers = (descriptors = [], descriptor = {}) => {
 
     const state = descriptors[index];
     return {
-        ...getDescriptorSpecificHandlers(descriptor)
+        setValue: value => state.value.value = value
     };
 };
 
@@ -42,7 +42,8 @@ const getHandlers = (state = {value: []}) => {
     return {
         addDescriptor: descriptor => state.value = addDescriptor(state.value, descriptor),
         addDescriptors: (descriptors = []) => state.value = descriptors.reduce((acc, d) => addDescriptor(acc, d), state.value),
-        removeDescriptor: descriptorId => state.value = removeDescriptor(state.value, descriptorId)
+        removeDescriptor: descriptorId => state.value = removeDescriptor(state.value, descriptorId),
+        getDescriptorHandlers: descriptor => getDescriptorHandlers(state.value, descriptor)
     };
 };
 

@@ -1,14 +1,11 @@
 import {lookupUUID} from "../functions.js";
-import {Characteristic as GenericCharacteristic} from "./characteristic.js";
+import {Characteristic} from "./characteristic.js";
 import {PolarDataCharacteristic, UUID as POLAR_DATA_UUID, getState as getPolarDataState, getHandlers as getPolarDataHandlers} from "../polar/characteristic/data.js";
 import {PolarControlPointCharacteristic, UUID as POLAR_CONTROL_POINT_UUID, getState as getPolarControlPointState, getHandlers as getPolarControlPointHandlers} from "../polar/characteristic/control-point.js";
-/*
-import {BatteryCharacteristic, UUID as BATTERY_UUID, getState as getBatteryState, getHandlers as getBatteryHandlers} from "./battery.js";
-import {DeviceInformationCharacteristic, UUID as DEVICE_INFORMATION_UUID, getState as getDeviceInformationState, getHandlers as getDeviceInformationHandlers} from "./device-information.js";
-import {UserDataCharacteristic, UUID as USER_DATA_UUID, getState as getUserDataState, getHandlers as getUserDataHandlers} from "./user-data.js";
-import {HeartRateCharacteristic, UUID as HEART_RATE_UUID, getState as getHeartRateState, getHandlers as getHeartRateHandlers} from "./heart-rate.js";
-import {MidiCharacteristic, UUID as MIDI_UUID, getState as getMidiState, getHandlers as getMidiHandlers} from "./midi/characteristic.js";
-*/
+import {CHARACTERISTIC_UUID} from "../characteristics_and_object_types.js";
+import {HeartRateMeasurementCharacteristic, getState as getHeartRateState, getHandlers as getHeartRateHandlers} from "./heart-rate-measurement.js";
+import {BodySensorLocationCharacteristic, getState as getBodySensorLocationState, getHandlers as getBodySensorLocationHandlers} from "./body-sensor-location.js";
+import {BatteryLevelCharacteristic, getState as getBatteryLevelState, getHandlers as getBatteryLevelHandlers} from "./battery-level.js";
 
 const specifics = {
     [POLAR_DATA_UUID]: {
@@ -20,29 +17,22 @@ const specifics = {
         state: getPolarControlPointState,
         handlers: getPolarControlPointHandlers,
         view: PolarControlPointCharacteristic
-    }
-    /*,
-    [USER_DATA_UUID]: {
-        state: getUserDataState,
-        handlers: getUserDataHandlers,
-        view: UserDatacharacteristic
     },
-    [HEART_RATE_UUID]: {
+    [CHARACTERISTIC_UUID.HEART_RATE_MEASUREMENT]: {
         state: getHeartRateState,
         handlers: getHeartRateHandlers,
-        view: HeartRatecharacteristic
+        view: HeartRateMeasurementCharacteristic
     },
-    [POLAR_UUID]: {
-        state: getPolarState,
-        handlers: getPolarHandlers,
-        view: Polarcharacteristic
+    [CHARACTERISTIC_UUID.BODY_SENSOR_LOCATION]: {
+        state: getBodySensorLocationState,
+        handlers: getBodySensorLocationHandlers,
+        view: BodySensorLocationCharacteristic
     },
-    [MIDI_UUID]: {
-        state: getMidiState,
-        handlers: getMidiHandlers,
-        view: Midicharacteristic
+    [CHARACTERISTIC_UUID.BATTERY_LEVEL]: {
+        state: getBatteryLevelState,
+        handlers: getBatteryLevelHandlers,
+        view: BatteryLevelCharacteristic
     }
-    */
 };
 
 
@@ -64,11 +54,12 @@ const getCharacteristicSpecificHandlers = (state = {}) => {
 
 const getCharacteristicSpecificView = (characteristicId) => {
     const lookup = lookupUUID(characteristicId);
-    if (Object.prototype.hasOwnProperty.call(specifics, lookup)) {
-        return specifics[lookup].view;
-    }
-    console.log("genericCharacteristic " + lookup);
-    return GenericCharacteristic;
+    const {
+        [lookup] : {
+            view = Characteristic
+        } = {}
+    } = specifics;
+    return view;
 };
 
 

@@ -7,6 +7,8 @@ const getInitialDescriptorState = (descriptor = {}) => {
 
     return {
         id: uuid,
+        uuid,
+        value: signal(null),
         object: descriptor
     };
 };

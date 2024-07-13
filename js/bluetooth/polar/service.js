@@ -75,13 +75,13 @@ const PolarService = (props = {}) => {
 
     useEffect(() => {
         if (dataCharacteristic !== null) {
-            console.log("data not nullllll");
+
         }
     }, [dataCharacteristic]);
 
     useEffect(() => {
         if (controlPointCharacteristic !== null) {
-            console.log("controlPoint not nullllll");
+
         }
     }, [controlPointCharacteristic]);
 
@@ -91,7 +91,7 @@ const PolarService = (props = {}) => {
 
             <div class="feature-support">
                 <h3>features</h3>
-                <${Characteristics} state=${characteristics.value} getHandlers=${handlers.getCharacteristicHandlers} />
+                <${Characteristics} state=${characteristics} getHandlers=${handlers.getCharacteristicHandlers} />
                 ${(features && features.value && features.value.length !== 0) ? Object.entries(features).map(([code, {parameters}]) => html`
                     <${PolarFeature}
                         log=${log}

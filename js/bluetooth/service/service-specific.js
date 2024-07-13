@@ -57,7 +57,6 @@ const getServiceSpecificHandlers = (state = {}) => {
 
 const getServiceSpecificView = (serviceId) => {
     const lookup = lookupUUID(serviceId);
-    console.log({lookup});
     if (Object.prototype.hasOwnProperty.call(specifics, lookup)) {
         return specifics[lookup].view;
     }

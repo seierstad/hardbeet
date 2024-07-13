@@ -12,7 +12,6 @@ const getInitialCharacteristicState = (characteristic = {}) => {
     } = characteristic;
     const specificState = getCharacteristicSpecificState(uuid);
 
-    console.log({uuid});
     return {
         id: uuid,
         uuid,

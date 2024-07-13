@@ -13,7 +13,12 @@ const getHandlers = (state = getState()) => {
 
 
 const PolarDataCharacteristic = (props = {}) => {
-
+    const {state = {}, handlers, serviceHandlers} = props;
+    const {object: characteristic, features} = state;
+    const logError = (e) => console.error(e);
+    const handleControlPointError = (error) => {
+        logError(`Sensor ${index} control point error: ${error}`);
+    };
 
     const handleDataChanged = (event) => {
         //this.logger.log(`Sensor ${this.index}: PMD data MTU characteristic changed ${event}`);
@@ -23,19 +28,19 @@ const PolarDataCharacteristic = (props = {}) => {
     };
 
     useEffect(() => {
-        if (dataCharacteristic !== null) {
-            if (dataCharacteristic.properties.notify) {
-                dataCharacteristic.startNotifications();
+        if (characteristic !== null) {
+            if (characteristic.properties.notify) {
+                characteristic.startNotifications();
             }
-            dataCharacteristic.addEventListener("characteristicvaluechanged", handleDataChanged);
+            characteristic.addEventListener("characteristicvaluechanged", handleDataChanged);
         }
-    }, [dataCharacteristic]);
+    }, [characteristic]);
 
     return "TODO: Polar Data Characteristic view";
 
 };
 
-const UUID = POLAR_CHARACTERISTICS.PMD_DATA;
+const UUID = POLAR_CHARACTERISTICS.PMD_DATA_MTU;
 
 
 export {
