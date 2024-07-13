@@ -1,4 +1,4 @@
-import {lookupUUID} from "./functions.js";
+import {lookupUUID} from "../functions.js";
 import {PolarService, UUID as POLAR_UUID, getState as getPolarState, getHandlers as getPolarHandlers} from "../polar/service.js";
 import {BatteryService, UUID as BATTERY_UUID, getState as getBatteryState, getHandlers as getBatteryHandlers} from "./battery.js";
 import {DeviceInformationService, UUID as DEVICE_INFORMATION_UUID, getState as getDeviceInformationState, getHandlers as getDeviceInformationHandlers} from "./device-information.js";
@@ -57,6 +57,7 @@ const getServiceSpecificHandlers = (state = {}) => {
 
 const getServiceSpecificView = (serviceId) => {
     const lookup = lookupUUID(serviceId);
+    console.log({lookup});
     if (Object.prototype.hasOwnProperty.call(specifics, lookup)) {
         return specifics[lookup].view;
     }

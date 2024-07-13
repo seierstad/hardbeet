@@ -31,8 +31,9 @@ const getHandlers = (state) => ({
 
 const UserDataService = (props = {}) => {
     const {state, getHandlers} = props;
+    const {object: service, firstName = {value: ""}} = state;
     const handlers = useMemo(() => getHandlers(state));
-    const {log: {log, logError} = {}} = useContext(AppHandlersContext);
+    const {log: {logError} = {}} = useContext(AppHandlersContext);
 
     const [firstNameCharacteristic, setFirstNameCharacteristic] = useState(null);
 
@@ -49,7 +50,7 @@ const UserDataService = (props = {}) => {
     useEffect(() => {
         if (firstNameCharacteristic !== null) {
             firstNameCharacteristic.readValue()
-                .then(firstName => setFirstName(firstName.getUint8(0)))
+                .then(firstName => handlers.setFirstName(firstName.getUint8(0)))
                 .catch(error => logError(error.message));
         }
     }, [firstNameCharacteristic]);

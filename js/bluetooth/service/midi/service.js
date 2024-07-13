@@ -1,33 +1,18 @@
 import {html} from "htm/preact";
-import {signal} from "@preact/signals";
-import {useLayoutEffect, useState, useContext, useMemo} from "preact/hooks";
+import {useLayoutEffect, useEffect, useState, useContext, useMemo} from "preact/hooks";
 
 import {AppHandlersContext} from "hardbeet";
-import {Log, LOG_LEVEL, getState as getLogState, getHandlers as getLogHandlers} from "hardbeet/log";
+import {Log, LOG_LEVEL} from "hardbeet/log";
+import {MidiAccessContext} from "hardbeet/midi/context.js";
+import {MidiSoftwareInput, MidiSoftwareOutput} from "hardbeet/midi/software-ports.js";
 
-import {lookupUUID} from "../functions.js";
+import {lookupUUID} from "../../functions.js";
 import Service from "../service.js";
 
 import {MIDI_SERVICE_UUID, MIDI_DATA_IO_UUID} from "./constants.js";
-import {parseMIDI} from "./parser.js";
-
-
-const getState = (initialValues = {}) => {
-    const {
-        log = getLogState({title: "Jamstik BT messages"})
-    } = initialValues;
-
-    return {
-        log
-    };
-};
-
-const getHandlers = (state = getState()) => {
-    const {log: logState} = state;
-    return {
-        log: getLogHandlers(logState)
-    };
-};
+import {parseMidiBLE, simpleMidi2MidiBLE} from "./parser.js";
+import {getHandlers} from "./handlers.js";
+import {getState} from "./state.js";
 
 
 const MidiService = (props = {}) => {
@@ -35,16 +20,15 @@ const MidiService = (props = {}) => {
     const {object: service = {}} = state;
     const handlers = useMemo(() => getHandlers(state));
     const {log: {log, logError} = {}} = useContext(AppHandlersContext);
+    const {addMidiInput, addMidiOutput} = useContext(MidiAccessContext);
 
     const [midiDataIO, setMidiDataIO] = useState(null);
+    const [properties, setProperties] = useState(null);
+    const [readwrite, setReadWrite] = useState(null);
+    const [inputPort, setInputPort] = useState(null);
+    const [outputPort, setOutputPort] = useState(null);
     //const [characteristic2, setCharacteristic2] = useState(null);
 
-
-    useLayoutEffect(() => {
-        service.getCharacteristic(MIDI_DATA_IO_UUID)
-            .then(setMidiDataIO)
-            .catch(e => logError(e.message));
-    }, []);
 
     useLayoutEffect(() => {
         service.getCharacteristics()
@@ -66,48 +50,116 @@ const MidiService = (props = {}) => {
             .catch(e => logError(e.message));
     }, []);
 
-    const handleMidiData = event => {
+    const handleMidiDataFromService = event => {
         const data = event.target.value;
-        const parsed = parseMIDI(data);
+        const parsed = parseMidiBLE(data);
 
-        const u8data = new Uint8Array(data);
         const msg = Array.from(new Uint8Array(event.target.value.buffer)).map(n => Number(n).toString(2).padStart(8, "0")).join(" ");
         handlers.log.log(msg, LOG_LEVEL.DEBUG, "code");
         parsed.forEach(message => handlers.log.log(JSON.stringify(message), LOG_LEVEL.INFO));
     };
 
+    const handleMidiDataFromPort = event => {
+        const data = event.data;
+        //console.log(`BT MIDI received data: ${data}`);
+        const midiBLEData = simpleMidi2MidiBLE(data);
+        //console.log(midiBLEData);
+        //console.log(typeof midiBLEData);
+        //console.log(midiBLEData instanceof ArrayBuffer);
+        const parsed = parseMidiBLE(new Uint8Array(midiBLEData));
+        parsed.forEach(message => handlers.log.log(JSON.stringify(message), LOG_LEVEL.INFO));
+        midiDataIO.writeValueWithoutResponse(new ArrayBuffer(midiBLEData)).then(result => console.log({result})).catch(error => console.log({error}));
+    };
+
+
     useLayoutEffect(() => {
         if (midiDataIO !== null) {
+            const {properties = {}} = midiDataIO;
             const {
-                properties: {
-                    broadcast,
-                    indicate,
-                    notify,
-                    read,
-                    write,
-                    writeWithoutResponse
-                } = {}
-            } = midiDataIO;
+                notify,
+                read,
+                write,
+                writeWithoutResponse
+            } = properties;
 
-            console.log(midiDataIO.properties);
-            midiDataIO.addEventListener("characteristicvaluechanged", handleMidiData);
+            setProperties(properties);
+            setReadWrite({
+                readable: read || notify,
+                writeable: write || writeWithoutResponse
+            });
+        }
+    }, [midiDataIO]);
+
+    useLayoutEffect(() => {
+        if (readwrite !== null && readwrite.readable) {
+            const {read, notify} = properties;
+            midiDataIO.addEventListener("characteristicvaluechanged", handleMidiDataFromService);
 
             midiDataIO.getDescriptors().then(descriptors => console.log(descriptors));
-            if (read) {
-                midiDataIO.readValue().then(midiData => handleMidiData);
+
+
+            if (read || notify) {
+                const port = new MidiSoftwareInput({
+                    id: service.device.id,
+                    name: service.device.name,
+                    manufacturer: service.device.manufacturer,
+                    version: "0.0.1beta",
+                    state: "connected",
+                    connection: "closed"
+                });
+                setInputPort(port);
             }
-            if  (notify) {
+
+            /*
+            if (read) {
+                midiDataIO.readValue().then(midiData => handleMidiDataFromService);
+            }
+            */
+            if (notify) {
                 midiDataIO.startNotifications();
             }
 
             return () => {
-                midiDataIO.removeEventListener("characteristicvaluechanged", handleMidiData);
+                midiDataIO.removeEventListener("characteristicvaluechanged", handleMidiDataFromService);
                 if (notify) {
                     midiDataIO.stopNotifications();
                 }
             };
         }
-    }, [midiDataIO]);
+    }, [readwrite]);
+
+    useLayoutEffect(() => {
+        if (readwrite !== null && readwrite.writeable) {
+            const port = new MidiSoftwareOutput({
+                id: service.device.id,
+                name: service.device.name,
+                manufacturer: service.device.manufacturer,
+                version: "0.0.1beta",
+                state: "connected",
+                connection: "closed"
+            });
+            port.addEventListener("midimessage", handleMidiDataFromPort);
+            setOutputPort(port);
+
+        }
+    }, [readwrite]);
+
+    useEffect(() => {
+        if (inputPort !== null) {
+            if (inputPort instanceof MidiSoftwareInput) {
+                addMidiInput(inputPort);
+            }
+        }
+    }, [inputPort]);
+
+
+    useEffect(() => {
+        if (outputPort !== null) {
+            if (outputPort instanceof MidiSoftwareOutput) {
+                addMidiOutput(outputPort);
+            }
+        }
+    }, [outputPort]);
 
 
     return html`

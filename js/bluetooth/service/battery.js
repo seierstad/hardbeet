@@ -1,10 +1,11 @@
 import {signal} from "@preact/signals";
-import {useEffect, useState, useContext, useMemo} from "preact/hooks";
+import {useLayoutEffect, useContext, useMemo} from "preact/hooks";
 import {html} from "htm/preact";
 
 import {AppHandlersContext} from "hardbeet";
 
 import {GATT_SERVICE_UUID} from "../GATT_constants.js";
+import {Characteristics} from "../characteristic/characteristics.js";
 
 import Service from "./service.js";
 
@@ -28,17 +29,13 @@ const getHandlers = (state) => ({
 
 const BatteryService = (props = {}) => {
     const {state, getHandlers} = props;
-    const {object: service = {}, batteryLevel} = state;
+    const {object: service = {}, batteryLevel, characteristics = {value: []}} = state;
     const handlers = useMemo(() => getHandlers(state));
-    const {log: {log, logError} = {}} = useContext(AppHandlersContext);
+    const {log: {logError} = {}} = useContext(AppHandlersContext);
 
     const handleBatteryLevelChanged = (event) => handlers.setBatteryLevel(event.target.value.getUint8(0));
 
     const handleBatteryLevelCharacteristic = (characteristic) => {
-        if (characteristic === null) {
-            setBatteryLevel("unknown");
-            return Promise.reject("no battery level characteristic found");
-        }
         const {
             properties: {
                 notify,
@@ -46,19 +43,27 @@ const BatteryService = (props = {}) => {
             } = {}
         } = characteristic;
 
-        characteristic.addEventListener("characteristicvaluechanged", handleBatteryLevelChanged);
+        if (read) {
+            characteristic.readValue().then(batteryLevelData => handlers.setBatteryLevel(batteryLevelData.getUint8(0)));
+        }
 
-        characteristic.readValue().then(batteryLevelData => handlers.setBatteryLevel(batteryLevelData.getUint8(0)));
-        if  (notify) {
+        if (notify) {
+            characteristic.addEventListener("characteristicvaluechanged", handleBatteryLevelChanged);
             characteristic.startNotifications();
         }
     };
 
-    useEffect(() => {
-        service.getCharacteristic("battery_level").then(handleBatteryLevelCharacteristic).catch(logError);
+    useLayoutEffect(() => {
+        service.getCharacteristic("battery_level").then(handlers.addCharacteristic).catch(logError);
     }, []);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
+        if (characteristics.value.length > 0) {
+            handleBatteryLevelCharacteristic(characteristics.value[0].object);
+        }
+    }, [characteristics.value]);
+
+    useLayoutEffect(() => {
         if (batteryLevel.value !== null) {
             console.log("send batteryLevel to wherever needed: " + batteryLevel.value);
         }
@@ -69,7 +74,7 @@ const BatteryService = (props = {}) => {
             ${batteryLevel === null ? null : html`<p class="battery-level">battery level: ${batteryLevel}</p>`}
         <//>
     `;
-}
+};
 
 
 export {

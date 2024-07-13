@@ -1,4 +1,4 @@
-import {useContext, useEffect, useLayoutEffect} from "preact/hooks";
+import {useContext, useEffect} from "preact/hooks";
 import {html} from "htm/preact";
 
 import {AppHandlersContext, AppStateContext} from "hardbeet";
@@ -8,10 +8,9 @@ import {mainServiceUUID, optionalServicesUUIDs} from "./constants.js";
 import {SERVICE_UUID as JAMSTIK_SERVICE_UUID, OPTIONAL_SERVICES as JAMSTIK_OPTIONAL_SERVICES} from "./jamstik/constants.js";
 
 import {Devices} from "./device/devices.js";
-import {UUID as BATTERY_SERVICE_UUID} from "./service/battery.js";
 
 
-const Bluetooth = (props = {}) => {
+const Bluetooth = () => {
     const {bluetooth: handlers, log: {log, logError}} = useContext(AppHandlersContext);
     const {bluetooth: state} = useContext(AppStateContext);
 
@@ -59,7 +58,6 @@ const Bluetooth = (props = {}) => {
             optionalServices: optionalServicesUUIDs
         }).then(
             device => {
-                deviceCounter += 1;
                 log(`got bt device ${device.id}`);
                 handlers.devices.addDevice(device);
                 //dispatch({type: ACTION.ADD_SENSOR, payload: {device, index: deviceCounter}});
@@ -104,7 +102,7 @@ const Bluetooth = (props = {}) => {
                 logError("device request error: " + error);
             }
         );
-    }
+    };
 
     return state.available.value ?
         html`
@@ -116,7 +114,7 @@ const Bluetooth = (props = {}) => {
                 ${state.devices.value.length > 0 ? html`<${Devices} log=${log} devices=${state.devices} handlers=${handlers.devices} />`: null}
             </section>
         `
-    : null;
+        : null;
 };
 
 

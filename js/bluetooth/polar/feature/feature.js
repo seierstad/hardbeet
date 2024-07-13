@@ -3,69 +3,16 @@ import {html} from "htm/preact";
 
 import {AppHandlersContext} from "hardbeet";
 
-import Visualizer from "../../visualizer.js";
+import Visualizer from "../../../visualizer.js";
 
 import {
     OP_CODE,
     MEASUREMENT_NAME,
     SETTING_TYPE_NAME,
     SETTING_VALUES
-} from "./codes.js";
+} from "../constants.js";
+
 import {parseMeasurementData} from "./parsers.js";
-
-
-const initialState = {
-    /*
-    code: 0, 1, 2, 3, 5, 6
-    supported: true
-    */
-    parameters: {},
-    status: "stopped"
-};
-
-const ACTION = {
-    POLAR_FEATURE_MEASUREMENT_PARAMETERS: Symbol("POLAR_FEATURE_MEASUREMENT_PARAMETERS"),
-    POLAR_MEASUREMENT_START: Symbol("POLAR_MEASUREMENT_START"),
-    POLAR_MEASUREMENT_STOP: Symbol("POLAR_MEASUREMENT_STOP"),
-    POLAR_MEASUREMENT_ERROR: Symbol("POLAR_MEASUREMENT_ERROR")
-};
-
-const reducer = (state = initialState, action = {}) => {
-    const {type, payload} = action;
-
-    switch (type) {
-
-        case ACTION.POLAR_FEATURE_MEASUREMENT_PARAMETERS:
-            return {
-                ...state,
-                parameters: payload.parameters
-            };
-
-        case ACTION.POLAR_MEASUREMENT_START:
-            return {
-                ...state,
-                status: "running"
-            };
-
-        case ACTION.POLAR_MEASUREMENT_STOP:
-            return {
-                ...state,
-                status: "stopped"
-            };
-
-        case ACTION.POLAR_MEASUREMENT_ERROR:
-            return {
-                ...state,
-                error: {
-                    status: payload.status,
-                    operation: payload.operation
-                }
-            };
-
-    }
-
-    return state;
-};
 
 
 const parameterList2Properties = (parameterList) => {
@@ -81,12 +28,14 @@ const absoluteMax = (value1, value2) => {
     return Math.max(Math.abs(value1), Math.abs(value2));
 };
 
+
 const getMinMax = (data) => data.reduce((acc, curr) => ({
     min: Math.min(curr, acc.min),
     max: Math.max(curr, acc.max)
 }), {min: Number.MAX_VALUE, max: Number.MIN_VALUE});
 
-function PolarFeature (props) {
+
+const PolarFeature = (props = {}) => {
     const {log: {logError, log}} = useContext();
     const {state, featureCode, commandFn, dispatch, callback = () => console.log("TODO: feature callback fn")} = props;
     const [normalizeFactor, setNormalizeFactor] = useState(1);
@@ -191,13 +140,10 @@ function PolarFeature (props) {
             </form>
         </div>
     `;
-}
+};
 
 
 export {
-    ACTION,
-    reducer,
+    PolarFeature,
     parameterList2Properties
 };
-
-export default PolarFeature;

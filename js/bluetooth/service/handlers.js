@@ -1,4 +1,7 @@
+import {batch} from "@preact/signals";
 import {indexById} from "hardbeet/handlers";
+
+import {getHandlers as getCharacteristicsHandlers} from "../characteristic/handlers.js";
 
 import {getServiceSpecificHandlers} from "./service-specific.js";
 import {getState, getServiceState} from "./state.js";
@@ -26,18 +29,19 @@ const removeService = (services = [], serviceId) => {
 const getServiceHandlers = (services = [], service) => {
     const index = indexById(services, service.uuid);
     if (index === -1) {
-        throw new Error(`no service with id=${serviceId}`);
+        throw new Error(`no service with id=${service.uuid}`);
     }
 
     const state = services[index];
     return {
-        addCharacteristic: service => state.services.value = addService(state.services.value, service),
+        ...getCharacteristicsHandlers(state.characteristics),
         ...getServiceSpecificHandlers(state)
     };
 };
 
 const getHandlers = (state = getState()) => ({
     addService: service => state.value = addService(state.value, service),
+    addServices: (services = []) => state.value = services.reduce((acc, service) => addService(acc, service), state.value),
     removeService: serviceId => state.value = removeService(state.value, serviceId),
     getServiceHandlers: service => getServiceHandlers(state.value, service)
 });
@@ -45,5 +49,5 @@ const getHandlers = (state = getState()) => ({
 
 export {
     addService,
-    getHandlers,
+    getHandlers
 };

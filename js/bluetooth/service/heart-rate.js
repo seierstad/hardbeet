@@ -1,20 +1,18 @@
-import {useEffect, useState} from "preact/hooks";
+import {signal} from "@preact/signals";
+import {useEffect, useState, useMemo, useContext} from "preact/hooks";
 import {html} from "htm/preact";
 
+import {AppHandlersContext} from "hardbeet";
 import {GATT_SERVICE_UUID} from "../GATT_constants.js";
+import {CHARACTERISTIC_UUID} from "../characteristics_and_object_types.js";
+import {findByUUID} from "../functions.js";
+
+import {DATA_FLAG as FLAG} from "../polar/constants.js";
 
 import Service from "./service.js";
 
 
 const UUID = GATT_SERVICE_UUID.HEART_RATE;
-
-const FLAG = {
-    RATE_16_BITS: 0x1,
-    CONTACT_DETECTED: 0x2,
-    CONTACT_SENSOR_PRESENT: 0x4,
-    ENERGY_PRESENT: 0x8,
-    RR_INTERVAL_PRESENT: 0x10
-};
 
 const BODY_SENSOR_LOCATIONS = {
     0x0000: "Other",
@@ -75,16 +73,16 @@ const getState = (initialValues = {}) => {
         heartRate: signal(heartRate),
         rrIntervals: signal(rrIntervals),
         contactDetected: signal(contactDetected),
-        energyExpanded: signal(energyExpanded),
+        energyExpended: signal(energyExpended),
         sensorLocation: signal(sensorLocation)
     };
-}
+};
 
 const getHandlers = state => ({
     setHeartRate: heartRate => state.heartRate.value = heartRate,
     setRRIntervals: rrIntervals => state.rrIntervals.value = rrIntervals,
     setContactDetected: contactDetected => state.contactDetected.value = contactDetected,
-    setEnergyExpanded: energyExpanded => state.energyExpanded.value = energyExpanded,
+    setEnergyExpended: energyExpended => state.energyExpended.value = energyExpended,
     setSensorLocation: sensorLocation => state.sensorLocation.value = sensorLocation
 });
 
@@ -92,24 +90,70 @@ const getHandlers = state => ({
 const HeartRateService = (props = {}) => {
     const {state = {}, getHandlers} = props;
     const handlers = useMemo(() => getHandlers(state));
-    const {heartRate, rrIntervals, contactDetected, energyExpanded, sensorLocation} = state;
-    const {setHeartRate, setRRIntervals, setContactDetected, setEnergyExpanded, setSensorLocation} = handlers;
+    const {object: service, characteristics = {value: []}, heartRate, rrIntervals, contactDetected, energyExpended, sensorLocation} = state;
+    const {addCharacteristics, setHeartRate, setRRIntervals, setContactDetected, setEnergyExpended, setSensorLocation} = handlers;
 
+    const {log: {logError}} = useContext(AppHandlersContext);
     const [heartRateCharacteristic, setHeartRateCharacteristic] = useState(null);
     const [sensorLocationCharacteristic, setSensorLocationCharacteristic] = useState(null);
 
     useEffect(() => {
-        (async function () {
-            await Promise.all([
-                service.getCharacteristic("body_sensor_location").then(characteristic => setSensorLocationCharacteristic(characteristic)),
-                service.getCharacteristic("heart_rate_measurement").then(characteristic => setHeartRateCharacteristic(characteristic))
-            ]);
-        })();
+        service.getCharacteristics()
+            .then(addCharacteristics);
     }, []);
+
+
+    useEffect(() => {
+        const cs = characteristics.value;
+        if (cs && cs.length > 0) {
+            const heartRate = cs.find(findByUUID(CHARACTERISTIC_UUID.HEART_RATE));
+            const sensorLocation = cs.find(findByUUID(CHARACTERISTIC_UUID.BODY_SENSOR_LOCATION));
+            if (heartRate) {
+                setHeartRateCharacteristic(heartRate);
+            } else {
+                setHeartRateCharacteristic(null);
+            }
+
+            if (sensorLocation) {
+                setSensorLocationCharacteristic(data);
+            } else {
+                setSensorLocationCharacteristic(null);
+            }
+        }
+    }, [characteristics.value]);
+
+    const parseSensorLocation = sensorLocationData => {
+        return sensorLocationData.getUint8(0);
+    };
+
+    const sensorLocationChangeHandler = (event) => {
+        const parsed = parseSensorLocation(event.target.value);
+        setSensorLocation(parsed);
+    };
 
     useEffect(() => {
         if (sensorLocationCharacteristic !== null) {
-            sensorLocationCharacteristic.readValue().then(sensorLocationData => setSensorLocation(sensorLocationData.getUint8(0)));
+            const {
+                properties: {
+                    read,
+                    notify
+                } = {}
+            } = sensorLocationCharacteristic;
+
+            if (read) {
+                sensorLocationCharacteristic.readValue()
+                    .then(sensorLocationData => setSensorLocation(sensorLocationData.getUint8(0)));
+            }
+
+            if (notify) {
+                sensorLocationCharacteristic.addEventListener("characteristicvaluechanged", sensorLocationChangeHandler);
+                sensorLocationCharacteristic.startNotifications();
+
+                return () => {
+                    sensorLocationCharacteristic.stopNotifications();
+                    sensorLocationCharacteristic.removeEventListener("characteristicvaluechanged", sensorLocationChangeHandler);
+                };
+            }
         }
     }, [sensorLocationCharacteristic]);
 
@@ -140,17 +184,26 @@ const HeartRateService = (props = {}) => {
 
     useEffect(() => {
         if (heartRateCharacteristic !== null) {
-            heartRateCharacteristic.addEventListener("characteristicvaluechanged", heartRateChangeHandler);
-            if (heartRateCharacteristic.properties.notify) {
+            const {
+                properties: {
+                    notify = false
+                } = {}
+            } = heartRateCharacteristic;
+
+            heartRateCharacteristic.getDescriptors().then(descriptors => descriptors.forEach(d => {
+                d.readValue().then(value => console.log({descriptor: d.uuid, value}));
+            })).catch(error => logError(error.message));
+
+            if (notify) {
+                heartRateCharacteristic.addEventListener("characteristicvaluechanged", heartRateChangeHandler);
                 heartRateCharacteristic.startNotifications();
             }
 
             return () => {
-                if (heartRateCharacteristic.properties.notify) {
+                if (notify) {
                     heartRateCharacteristic.stopNotifications();
+                    heartRateCharacteristic.removeEventListener("characteristicvaluechanged", heartRateChangeHandler);
                 }
-
-                heartRateCharacteristic.removeEventListener("characteristicvaluechanged", heartRateChangeHandler);
             };
         }
     }, [heartRateCharacteristic]);
@@ -167,7 +220,7 @@ const HeartRateService = (props = {}) => {
             <dl>
                 ${sensorLocation !== null ? html`<dt>sensor location</dt><dd>${BODY_SENSOR_LOCATIONS[sensorLocation] || "Unknown"}</dd>` : null}
                 ${heartRate !== null ? html`<dt>heart rate</dt><dd>${heartRate}</dd>` : null}
-                ${rrIntervals !== null ? html`<dt>rr intevals</dt><dd>${rrIntervals.join(", ")}</dd>` : null}
+                ${rrIntervals !== null ? html`<dt>rr intevals</dt><dd>${rrIntervals}</dd>` : null}
                 ${contactDetected !== null ? html`<dt>contact detected</dt><dd>${contactDetected}</dd>` : null}
                 ${energyExpended !== null ? html`<dt>energy expended</dt><dd>${energyExpended}</dd>` : null}
             </dl>

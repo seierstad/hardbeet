@@ -6,9 +6,10 @@ import {AppHandlersContext} from "hardbeet";
 
 import {CHARACTERISTIC_UUID} from "../characteristics_and_object_types.js";
 import {GATT_SERVICE_UUID} from "../GATT_constants.js";
+import {lookupUUID} from "../functions.js";
 
 import Service from "./service.js";
-import {lookupUUID} from "./functions.js";
+
 
 const UUID = GATT_SERVICE_UUID.DEVICE_INFORMATION;
 
@@ -63,7 +64,7 @@ const getHandlers = (state) => ({
 const DeviceInformationService = (props = {}) => {
     const {state, getHandlers} = props;
     const handlers = useMemo(() => getHandlers(state));
-    const {setManufacturerName, setSystemId, setPnpId, setModelNumber, setHardwareRevision, setFirmwareRevision, setSoftwareRevision, setSerialNumber} = handlers;
+    const {setManufacturerName, setSystemId, setPnpId, setModelNumber, setHardwareRevision, setFirmwareRevision, setSoftwareRevision} = handlers;
     const {
         object: service,
         manufacturerName = {value: null},
@@ -81,7 +82,7 @@ const DeviceInformationService = (props = {}) => {
     const [manufacturerNameCharacteristic, setManufacturerNameCharacteristic] = useState(null);
     const [systemIdCharacteristic, setSystemIdCharacteristic] = useState(null);
     const [modelNumberCharacteristic, setModelNumberCharacteristic] = useState(null);
-    const [serialNumberCharacteristic, setSerialNumberCharacteristic] = useState(null);
+    //const [serialNumberCharacteristic, setSerialNumberCharacteristic] = useState(null);
     const [hardwareRevisionCharacteristic, setHardwareRevisionCharacteristic] = useState(null);
     const [firmwareRevisionCharacteristic, setFirmwareRevisionCharacteristic] = useState(null);
     const [softwareRevisionCharacteristic, setSoftwareRevisionCharacteristic] = useState(null);
@@ -121,10 +122,12 @@ const DeviceInformationService = (props = {}) => {
                             setSoftwareRevisionCharacteristic(c);
                             break;
 
+                            /*
                         case CHARACTERISTIC_UUID.SERIAL_NUMBER_STRING:
                             // https://webbluetoothcg.github.io/web-bluetooth/#attacks-on-devices
                             setSerialNumberCharacteristic(c);
                             break;
+                        */
 
                         default:
                             log(`unknown characteristic: ${c.uuid}`);
@@ -209,7 +212,7 @@ const DeviceInformationService = (props = {}) => {
             </dl>
         <//>
     `;
-}
+};
 
 
 export {

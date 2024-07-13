@@ -1,4 +1,3 @@
-import {GATT_SERVICE_UUID} from "../GATT_constants.js";
 import {MIDI_SERVICE_UUID} from "../service/midi/constants.js";
 
 

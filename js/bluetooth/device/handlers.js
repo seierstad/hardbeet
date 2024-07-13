@@ -1,7 +1,6 @@
-import {batch} from "@preact/signals";
-import {getValue, indexById} from "hardbeet/handlers";
+import {indexById} from "hardbeet/handlers";
 
-import {getHandlers as getServicesHandlers, addService} from "../service/handlers.js";
+import {getHandlers as getServicesHandlers} from "../service/handlers.js";
 
 import {getState, getInitialDeviceState} from "./state.js";
 

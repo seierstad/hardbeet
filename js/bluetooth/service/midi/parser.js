@@ -1,4 +1,4 @@
-import {MESSAGE_TYPE, MESSAGE_TYPE_LOOKUP, SYSEX_TYPE, SYSEX_TYPE_LOOKUP, CONTROL, CONTROL_LOOKUP, DATA_LENGTH} from "hardbeet/midi/constants.js";
+import {MESSAGE_TYPE, MESSAGE_TYPE_LOOKUP, SYSEX_TYPE_LOOKUP, CONTROL} from "hardbeet/midi/constants.js";
 
 const bitmask = bits => (1 << bits) - 1;
 const BIT_8 = 1 << 7;
@@ -8,22 +8,6 @@ const BITMASK_7 = bitmask(7);
 const BITMASK_14 = bitmask(14);
 const BITMASK_UPPER_4 = BITMASK_4 << 4;
 
-
-/*
-1) dytt inn data
-2) ta vare på timestampMSB
-3) ta vare på timestampLSB
-4) les meldingstypen
-5a) hvis ikke sysex
-   5a-1) ta vare på typen i runningStatus
-   5a-2) slå opp meldingslengden i tabell
-   5a-3) finn index for neste byte med MSB === 1
-   5a-4) kopiér buffer frem til neste timestampLSB (funnet i forrige) / slutten
-   5a-5) lag en sub-iterator som leverer tolkning av data fra 5a-4
-5b) hvis sysex
-   5b-1) finn index for sysex-slutt
-
-*/
 const dataParserFunctions = {
     [MESSAGE_TYPE.NOTE_ON]: (key, velocity) => ({
         key,
@@ -150,11 +134,16 @@ class ChunkView {
         return length;
     }
 
+    get data () {
+        return new Uint8Array([this.messageByte, ...this.view.slice(this.dataPointer, this.dataPointer + this.dataLength)]);
+    }
+
     *messages () {
         const data = Array.from(new Uint8Array(this.view.buffer, this.view.byteOffset + this.dataPointer, this.dataLength));
 
         if (this.dataPointer < this.length) {
             yield ({
+                data: Array.from(this.data),
                 messageByte: this.messageByte,
                 messageType: this.messageType,
                 channel: this.channel,
@@ -175,7 +164,7 @@ function* midiParser (data) {
     }
     const timestampMSB = (0 + (view[0] & BITMASK_6)) << 7;
 
-    const chunkStartPositions = view.reduce((acc, curr, index, arr) => {
+    const chunkStartPositions = view.reduce((acc, curr, index) => {
         if (index > 1 && (curr & BIT_8) === BIT_8 && acc.indexOf(index - 1) === -1) {
             return [...acc, index];
         }
@@ -203,12 +192,22 @@ function* midiParser (data) {
 }
 
 
-const parseMIDI = (data) => {
+const parseMidiBLE = (data) => {
     const parser = midiParser(data);
     return [...parser];
 };
 
 
+const simpleMidi2MidiBLE = message => {
+    const time = Date.now();
+    const headerByte = 0b10000000 | ((time >> 7) & BITMASK_6);
+    const timestampLSB = 0b10000000 | (time & BITMASK_7);
+    //return new Uint8Array([headerByte, timestampLSB, 0x90, 0x40, 0x7f]);
+    //return new Uint8Array([headerByte, timestampLSB, 0x90, 0x40, 0x7f]).buffer;
+    return new Uint8Array([headerByte, timestampLSB, ...Array.from(message)]).buffer;
+};
+
 export {
-    parseMIDI
+    parseMidiBLE,
+    simpleMidi2MidiBLE
 };

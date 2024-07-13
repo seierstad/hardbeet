@@ -7,20 +7,6 @@ const POLAR_MANUFACTURER_IDS = [0x006B, 0x00D1];
 
 const POLAR_H10_UNDOCUMENTED_SERVICE = "6217ff4b-fb31-1140-ad5a-a45545d7ecf3";
 
-const POLAR_NAMES = {
-    0xFEEE: "Polar proprietary UUID 1",
-    0xFEFE: "Polar proprietary UUID 2",
-    "fb005c80-02e7-f387-1cad-8acd2d8df0c8": "Polar Measurement Data Service",
-    "fb005c81-02e7-f387-1cad-8acd2d8df0c8": "Polar Measurement Data Control Point",
-    "fb005c82-02e7-f387-1cad-8acd2d8df0c8": "Polar Measurement Data MTU Characteristic",
-    "6217ff4b-fb31-1140-ad5a-a45545d7ecf3": "Polar H10 undocumented service",
-    "fb005c51-02e7-f387-1cad-8acd2d8df0c8": "Polar undocumented characteristic 1",
-    "fb005c52-02e7-f387-1cad-8acd2d8df0c8": "Polar undocumented characteristic 2",
-    "fb005c53-02e7-f387-1cad-8acd2d8df0c8": "Polar undocumented characteristic 3",
-    "6217ff4c-c8ec-b1fb-1380-3ad986708e2d": "Polar undocumented characteristic 4",
-    "6217ff4d-91bb-91d0-7e2a-7cd3bda8a1f3": "Polar undocumented characteristic 5"
-};
-
 const POLAR_CHARACTERISTICS = {
     UNDOCUMENTED_1: "fb005c51-02e7-f387-1cad-8acd2d8df0c8",
     UNDOCUMENTED_2: "fb005c52-02e7-f387-1cad-8acd2d8df0c8",
@@ -29,6 +15,20 @@ const POLAR_CHARACTERISTICS = {
     UNDOCUMENTED_5: "6217ff4d-91bb-91d0-7e2a-7cd3bda8a1f3",
     PMD_CONTROL_POINT: "fb005c81-02e7-f387-1cad-8acd2d8df0c8",
     PMD_DATA_MTU: "fb005c82-02e7-f387-1cad-8acd2d8df0c8"
+};
+
+const POLAR_NAMES = {
+    [POLAR_UUID1]: "Polar proprietary UUID 1",
+    [POLAR_UUID2]: "Polar proprietary UUID 2",
+    [POLAR_MEASUREMENT_DATA_SERVICE_UUID]: "Polar Measurement Data Service",
+    [POLAR_CHARACTERISTICS.PMD_CONTROL_POINT]: "Polar Measurement Data Control Point",
+    [POLAR_CHARACTERISTICS.PMD_DATA_MTU]: "Polar Measurement Data MTU Characteristic",
+    [POLAR_H10_UNDOCUMENTED_SERVICE]: "Polar H10 undocumented service",
+    [POLAR_CHARACTERISTICS.UNDOCUMENTED_1]: "Polar undocumented characteristic 1",
+    [POLAR_CHARACTERISTICS.UNDOCUMENTED_2]: "Polar undocumented characteristic 2",
+    [POLAR_CHARACTERISTICS.UNDOCUMENTED_3]: "Polar undocumented characteristic 3",
+    [POLAR_CHARACTERISTICS.UNDOCUMENTED_4]: "Polar undocumented characteristic 4",
+    [POLAR_CHARACTERISTICS.UNDOCUMENTED_5]: "Polar undocumented characteristic 5"
 };
 
 const POLAR_ERROR_CODES = {
@@ -152,10 +152,10 @@ const SETTING_VALUES = {
 };
 
 const SETTING_TYPE_NAME = {
-    0x00: "samplerate",
-    0x01: "resolution",
-    0x02: "range",
-    0x04: "channels",
+    [SETTING_TYPE.SAMPLE_RATE]: "samplerate",
+    [SETTING_TYPE.RESOLUTION]: "resolution",
+    [SETTING_TYPE.RANGE]: "range",
+    [SETTING_TYPE.CHANNELS]: "channels",
     0x05: "factor"
 };
 
@@ -183,6 +183,15 @@ const PMD_FLAG = {
     MAG_SUPPORTED:  0x20
 };
 
+const DATA_FLAG = {
+    RATE_16_BITS: 0x1,
+    CONTACT_DETECTED: 0x2,
+    CONTACT_SENSOR_PRESENT: 0x4,
+    ENERGY_PRESENT: 0x8,
+    RR_INTERVAL_PRESENT: 0x10
+};
+
+
 export {
     POLAR_MEASUREMENT_DATA_SERVICE_UUID,
     POLAR_CHARACTERISTICS,
@@ -197,6 +206,7 @@ export {
     SETTING_LENGTH,
     CONTROL_POINT_REQUEST,
     PMD_FLAG,
+    DATA_FLAG,
     POLAR_NAMES,
     OP_CODE,
     SETTING_VALUES,

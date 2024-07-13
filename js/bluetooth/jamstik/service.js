@@ -1,5 +1,4 @@
 import {html} from "htm/preact";
-import {signal} from "@preact/signals";
 import {useLayoutEffect, useState, useContext, useMemo} from "preact/hooks";
 
 import {AppHandlersContext} from "hardbeet";
@@ -13,7 +12,7 @@ import {parseMIDI} from "./midi-parser.js";
 
 const getState = (initialValues = {}) => {
     const {
-        log = getLogState({title: "Jamstik BT messages"})
+        log = getLogState({title: "BT messages"})
     } = initialValues;
 
     return {
@@ -33,10 +32,10 @@ const MIDIService = (props = {}) => {
     const {state, getHandlers} = props;
     const {object: service = {}} = state;
     const handlers = useMemo(() => getHandlers(state));
-    const {log: {log, logError} = {}} = useContext(AppHandlersContext);
+    const {log: {logError} = {}} = useContext(AppHandlersContext);
 
     const [midiDataIO, setMidiDataIO] = useState(null);
-    const [characteristic2, setCharacteristic2] = useState(null);
+    //const [characteristic2, setCharacteristic2] = useState(null);
 
 
     useLayoutEffect(() => {
@@ -56,7 +55,6 @@ const MIDIService = (props = {}) => {
         const data = event.target.value;
         const parsed = parseMIDI(data);
 
-        const u8data = new Uint8Array(data);
         const msg = Array.from(new Uint8Array(event.target.value.buffer)).map(n => Number(n).toString(2).padStart(8, "0")).join(" ");
         handlers.log.log(msg, LOG_LEVEL.DEBUG, "code");
         parsed.forEach(message => handlers.log.log(JSON.stringify(message), LOG_LEVEL.INFO));
@@ -66,18 +64,14 @@ const MIDIService = (props = {}) => {
         if (midiDataIO !== null) {
             const {
                 properties: {
-                    indicate,
-                    notify,
-                    read,
-                    write,
-                    writeWithoutResponse
+                    notify
                 } = {}
             } = midiDataIO;
-            console.log(midiDataIO.properties);
+            // console.log(midiDataIO.properties);
             midiDataIO.addEventListener("characteristicvaluechanged", handleMidiData);
 
             //midiDataIO.readValue().then(midiData => );
-            if  (notify) {
+            if (notify) {
                 midiDataIO.startNotifications();
             }
 

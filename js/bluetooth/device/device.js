@@ -8,7 +8,7 @@ import {Services} from "../service/services.js";
 
 const Device = (props = {}) => {
     const {log: {log, logError} = {}} = useContext(AppHandlersContext);
-    const {state, functions = {}, getHandlers, serviceDescriptors = []} = props;
+    const {state, getHandlers, serviceDescriptors = []} = props;
     const {object: device, services = {value: []}} = state;
 
     const [GATTServer, setGATTServer] = useState(null);
@@ -60,7 +60,13 @@ const Device = (props = {}) => {
                 <span class="device-name">${device.name}</span>
                 <span class="device-id">${device.id}</span>
             </header>
-            ${(GATTServer !== null) ? html`<${Services} services=${services} serviceDescriptors=${serviceDescriptors} addService=${handlers.addService} getHandlers=${handlers.getServiceHandlers} GATTServer=${GATTServer} />` : null}
+            ${(GATTServer !== null) ? html`<${Services}
+                services=${services}
+                serviceDescriptors=${serviceDescriptors}
+                addServices=${handlers.addServices}
+                getHandlers=${handlers.getServiceHandlers}
+                GATTServer=${GATTServer}
+            />` : null}
         </div>
     `;
 };
