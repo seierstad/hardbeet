@@ -1,4 +1,3 @@
-import {batch} from "@preact/signals";
 import {indexById} from "hardbeet/handlers";
 
 import {getHandlers as getCharacteristicsHandlers} from "../characteristic/handlers.js";

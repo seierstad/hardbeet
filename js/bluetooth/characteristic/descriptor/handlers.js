@@ -1,5 +1,3 @@
-import {batch} from "@preact/signals";
-
 import {indexById} from "hardbeet/handlers";
 
 import {getInitialDescriptorState} from "./state.js";

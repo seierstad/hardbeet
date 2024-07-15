@@ -27,10 +27,7 @@ const Midi = () => {
                     <legend>outputs</legend>
                     ${state.outputs.value.length > 0 ? state.outputs.value.map((port) => html`<${MidiOutput} port=${port.object} key=${port.id} handlers=${handlers} state=${port} />`) : "no outputs"}
                 </fieldset>
-                `)
-                :
-                MidiAccessButton
-            }
+            `) : MidiAccessButton}
         </section>
     `;
 

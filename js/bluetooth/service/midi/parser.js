@@ -18,13 +18,13 @@ const dataParserFunctions = {
     [MESSAGE_TYPE.POLY_PRESSURE]: (key, pressure) => ({key, pressure}),
     [MESSAGE_TYPE.CONTROL_CHANGE]: (control, value) => {
         //if (control < 120) {
-            return {
-                control,
-                controlName: CONTROL[control],
-                value
-            };
+        return {
+            control,
+            controlName: CONTROL[control],
+            value
+        };
         //}
-//        TODOOOOOOOOOOOOOOO!!!!
+        //        TODOOOOOOOOOOOOOOO!!!!
     },
     [MESSAGE_TYPE.PROGRAM_CHANGE]: (program) => ({program}),
     [MESSAGE_TYPE.CHANNEL_PRESSURE]: (pressure) => ({pressure}),
@@ -138,7 +138,7 @@ class ChunkView {
         return new Uint8Array([this.messageByte, ...this.view.slice(this.dataPointer, this.dataPointer + this.dataLength)]);
     }
 
-    *messages () {
+    * messages () {
         const data = Array.from(new Uint8Array(this.view.buffer, this.view.byteOffset + this.dataPointer, this.dataLength));
 
         if (this.dataPointer < this.length) {

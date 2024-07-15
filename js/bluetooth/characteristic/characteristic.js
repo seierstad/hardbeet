@@ -9,20 +9,20 @@ import {getCharacteristicSpecificView} from "./characteristic-specific.js";
 
 
 const GenericCharacteristic = (props = {}) => {
-    const {state, getHandlers, serviceHandlers} = props;
-    const {object: characteristic, descriptors, uuid} = state;
+    const {state, getHandlers, serviceHandlers, ...rest} = props;
+    const {object: characteristic, uuid} = state;
     const handlers = useMemo(() => getHandlers(state));
     const {addDescriptors} = handlers;
 
     useEffect(() => {
         characteristic.getDescriptors()
             .then(addDescriptors)
-            .catch(e => null); // catch error thrown when characteristic has no descriptors
+            .catch(() => null); // catch error thrown when characteristic has no descriptors
     }, [characteristic]);
 
     const View = getCharacteristicSpecificView(uuid);
 
-    return html`<${View} state=${state} handlers=${handlers} serviceHandlers=${serviceHandlers} />`;
+    return html`<${View} state=${state} handlers=${handlers} serviceHandlers=${serviceHandlers} ...${rest} />`;
 };
 
 

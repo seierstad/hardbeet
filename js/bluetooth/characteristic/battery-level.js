@@ -1,5 +1,4 @@
-import {useEffect, useMemo, useState} from "preact/hooks";
-import {signal} from "@preact/signals";
+import {useEffect} from "preact/hooks";
 import {html} from "htm/preact";
 
 import {Characteristic} from "./characteristic.js";
@@ -12,9 +11,8 @@ const getHandlers = () => {};
 
 const BatteryLevelCharacteristic = (props = {}) => {
     const {state = {}, handlers, serviceHandlers} = props;
-    const {object: characteristic, features} = state;
+    const {object: characteristic} = state;
     const {setBatteryLevel} = serviceHandlers;
-    const logError = (e) => console.error(e);
 
     const handleBatteryLevelChanged = (event) => setBatteryLevel(event.target.value.getUint8(0));
 
@@ -35,8 +33,6 @@ const BatteryLevelCharacteristic = (props = {}) => {
             characteristic.startNotifications();
         }
     }, []);
-
-
 
     return html`
         <${Characteristic} state=${state} handlers=${handlers}>

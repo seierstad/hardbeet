@@ -1,7 +1,7 @@
 import {signal} from "@preact/signals";
 
 import {getState as getServicesState} from "../service/state.js";
-import {byteArray2Array} from "../parser-functions.js";
+
 
 const getInitialDeviceState = device => {
     const {services = []} = device;

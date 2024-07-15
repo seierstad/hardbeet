@@ -1,11 +1,12 @@
 const POLAR_MEASUREMENT_DATA_SERVICE_UUID = "fb005c80-02e7-f387-1cad-8acd2d8df0c8";
+const PFC_SERVICE = "6217ff4b-fb31-1140-ad5a-a45545d7ecf3";
+
 
 const POLAR_UUID1 = 0xFEEE;
 const POLAR_UUID2 = 0xFEFE;
 
 const POLAR_MANUFACTURER_IDS = [0x006B, 0x00D1];
 
-const POLAR_H10_UNDOCUMENTED_SERVICE = "6217ff4b-fb31-1140-ad5a-a45545d7ecf3";
 
 const POLAR_CHARACTERISTICS = {
     UNDOCUMENTED_1: "fb005c51-02e7-f387-1cad-8acd2d8df0c8",
@@ -21,9 +22,9 @@ const POLAR_NAMES = {
     [POLAR_UUID1]: "Polar proprietary UUID 1",
     [POLAR_UUID2]: "Polar proprietary UUID 2",
     [POLAR_MEASUREMENT_DATA_SERVICE_UUID]: "Polar Measurement Data Service",
+    [PFC_SERVICE]: "Polar Features Configuration Service (PFCS)",
     [POLAR_CHARACTERISTICS.PMD_CONTROL_POINT]: "Polar Measurement Data Control Point",
     [POLAR_CHARACTERISTICS.PMD_DATA_MTU]: "Polar Measurement Data MTU Characteristic",
-    [POLAR_H10_UNDOCUMENTED_SERVICE]: "Polar H10 undocumented service",
     [POLAR_CHARACTERISTICS.UNDOCUMENTED_1]: "Polar undocumented characteristic 1",
     [POLAR_CHARACTERISTICS.UNDOCUMENTED_2]: "Polar undocumented characteristic 2",
     [POLAR_CHARACTERISTICS.UNDOCUMENTED_3]: "Polar undocumented characteristic 3",
@@ -69,6 +70,42 @@ const MEASUREMENT_TYPE = {
     "MAGNETOMETER": 0x06 // Gauss (G)
     //4, 7-255 Reserved for Future Use
 };
+
+
+/* Polar v5.0.0:
+    ECG(0u),
+    PPG(1u),
+    ACC(2u),
+    PPI(3u),
+    GYRO(5u),
+    MAGNETOMETER(6u),
+    SDK_MODE(9u),
+    LOCATION(10u),
+    PRESSURE(11u),
+    TEMPERATURE(12u),
+    OFFLINE_RECORDING(13u),
+    OFFLINE_HR(14u),
+    OFFLINE_TEMP(15u),
+    UNKNOWN_TYPE(0x3fu);
+
+
+        fun fromByteArray(data: ByteArray): Set<PmdMeasurementType> {
+            val measurementTypes: MutableSet<PmdMeasurementType> = mutableSetOf()
+            if ((data[1].toUInt() and 0x01u) != 0u) measurementTypes.add(ECG)
+            if ((data[1].toUInt() and 0x02u) != 0u) measurementTypes.add(PPG)
+            if ((data[1].toUInt() and 0x04u) != 0u) measurementTypes.add(ACC)
+            if ((data[1].toUInt() and 0x08u) != 0u) measurementTypes.add(PPI)
+            if ((data[1].toUInt() and 0x20u) != 0u) measurementTypes.add(GYRO)
+            if ((data[1].toUInt() and 0x40u) != 0u) measurementTypes.add(MAGNETOMETER)
+            if ((data[2].toUInt() and 0x04u) != 0u) measurementTypes.add(LOCATION)
+            if ((data[2].toUInt() and 0x08u) != 0u) measurementTypes.add(PRESSURE)
+            if ((data[2].toUInt() and 0x10u) != 0u) measurementTypes.add(TEMPERATURE)
+            if ((data[2].toUInt() and 0x02u) != 0u) measurementTypes.add(SDK_MODE)
+            if ((data[2].toUInt() and 0x20u) != 0u) measurementTypes.add(OFFLINE_RECORDING)
+            if ((data[2].toUInt() and 0x40u) != 0u) measurementTypes.add(OFFLINE_HR)
+            return measurementTypes
+        }
+        */
 
 const MEASUREMENT_NAME = {
     0x00: "ecg",
@@ -187,7 +224,7 @@ const PMD_FLAG = {
 export {
     POLAR_MEASUREMENT_DATA_SERVICE_UUID,
     POLAR_CHARACTERISTICS,
-    POLAR_H10_UNDOCUMENTED_SERVICE,
+    PFC_SERVICE,
     POLAR_UUID1,
     POLAR_UUID2,
     POLAR_ERROR_CODES,

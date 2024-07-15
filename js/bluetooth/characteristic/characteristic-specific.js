@@ -55,7 +55,7 @@ const getCharacteristicSpecificHandlers = (state = {}) => {
 const getCharacteristicSpecificView = (characteristicId) => {
     const lookup = lookupUUID(characteristicId);
     const {
-        [lookup] : {
+        [lookup]: {
             view = Characteristic
         } = {}
     } = specifics;

@@ -1,5 +1,7 @@
+import {MEASUREMENT_STATUS} from "./constants.js";
+
 const DEFAULT = {
-    STATUS: "stopped"
+    STATUS: MEASUREMENT_STATUS.STOPPED
 };
 
 

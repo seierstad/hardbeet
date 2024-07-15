@@ -1,4 +1,4 @@
-import {useEffect, useState, useContext} from "preact/hooks";
+import {useEffect, useLayoutEffect, useState, useContext, useMemo, useRef} from "preact/hooks";
 import {html} from "htm/preact";
 
 import {AppHandlersContext} from "hardbeet";
@@ -9,10 +9,9 @@ import {
     OP_CODE,
     MEASUREMENT_NAME,
     SETTING_TYPE_NAME,
-    SETTING_VALUES
+    SETTING_VALUES,
+    SETTING_LENGTH
 } from "../constants.js";
-
-import {parseMeasurementData} from "./parsers.js";
 
 
 const parameterList2Properties = (parameterList) => {
@@ -36,16 +35,15 @@ const getMinMax = (data) => data.reduce((acc, curr) => ({
 
 
 const PolarFeature = (props = {}) => {
-    const {log: {logError, log}} = useContext();
-    const {state, featureCode, commandFn, dispatch, callback = () => console.log("TODO: feature callback fn")} = props;
+    const {log: {logError}} = useContext(AppHandlersContext);
+    const {state = {}, callback, controlPoint, getHandlers} = props;
+    const {code, parameters, status, activeStreamProperties, data} = state;
+    const handlers = useMemo(() => getHandlers(state));
+    const {setActiveStreamProperties} = handlers;
     const [normalizeFactor, setNormalizeFactor] = useState(1);
     const [min, setMin] = useState(null);
     const [max, setMax] = useState(null);
     const [visualizer] = useState(new Visualizer());
-    const [requestedStreamProperties, setRequestedStreamProperties] = useState([]);
-    const [data, setData] = useState([]);
-    const [activeStreamProperties, setActiveStreamProperties] = useState([]);
-    const {parameters = []} = props;
     const [error, setError] = useState(null);
 
     useEffect(() => {
@@ -56,7 +54,7 @@ const PolarFeature = (props = {}) => {
                     message
                 }
             } = error;
-            logError(`ERROR: ${operation}: ${message}`);
+            logError(`${MEASUREMENT_NAME[code]} measurement error: ${operation}: ${message}`);
         }
     }, [error]);
 
@@ -64,18 +62,21 @@ const PolarFeature = (props = {}) => {
         return [Math.min(Math.max(value * normalizeFactor, -1), 1)];
     };
 
-    const parseData = (data) => {
-        const properties = parameterList2Properties(activeStreamProperties);
-        const parsedDataResponse = parseMeasurementData(data, properties);
-        setData(parsedDataResponse.data);
-    };
+    const visualizerContainer = useRef(null);
+
+    useLayoutEffect(() => {
+        visualizerContainer.current && visualizerContainer.current.appendChild(visualizer.rootElement);
+    }, [visualizerContainer.current]);
 
     useEffect(() => {
-        if (data.length > 0) {
+        const {value: {
+            data: dataArr = []
+        } = {}} = data;
+        if (dataArr && dataArr.length > 0) {
             const {
                 min: dataMin,
                 max: dataMax
-            } = getMinMax(data);
+            } = getMinMax(dataArr);
 
             if (max === null || dataMax > max) {
                 setMax(dataMax);
@@ -84,21 +85,56 @@ const PolarFeature = (props = {}) => {
                 setMin(dataMin);
             }
 
-            const properties = parameterList2Properties(activeStreamProperties);
-            visualizer.appendData(data, properties);
-            callback(MEASUREMENT_NAME[featureCode], data.map(normalize), properties);
+            const properties = parameterList2Properties(activeStreamProperties.value);
+            visualizer.appendData(dataArr, properties);
+            //callback(MEASUREMENT_NAME[code], dataArr.map(normalize), properties);
         }
-    }, data);
+    }, [data.value]);
+
+    const featureCommandHandler = (featureId, operationCode, parameters) => {
+        let request = null;
+
+        switch (operationCode) {
+            case OP_CODE.START_MEASUREMENT:
+                request = new ArrayBuffer(2 + (4 * parameters.length));
+                const view = new DataView(request);
+
+                view.setUint8(0, operationCode);
+                view.setUint8(1, featureId);
+
+                let i = 2;
+                parameters.forEach(([parameter, value]) => {
+                    view.setUint8(i, parameter);
+                    i += 1;
+                    view.setUint8(i, SETTING_LENGTH);
+                    i += 1;
+                    view.setUint16(i, value, true);
+                    i += 2;
+                });
+                break;
+
+            case OP_CODE.STOP_MEASUREMENT:
+                request = Uint8Array.of(operationCode, featureId);
+                break;
+
+            default:
+                logError(`unknown operation code: ${operationCode}`);
+        }
+
+        if (request !== null) {
+            controlPoint.writeValueWithResponse(request);
+        }
+    };
 
     const submitHandler = (event) => {
         event.preventDefault();
         event.stopPropagation();
         const parameters = Array.from(new FormData(event.target).entries()).map(([id, value]) => [parseInt(id, 10), parseInt(value, 10)]);
         const operation = parseInt(event.submitter.value, 10);
-        commandFn(parseInt(featureCode, 10), operation, parameters);
+        featureCommandHandler(parseInt(code, 10), operation, parameters);
 
         if (operation === OP_CODE.START_MEASUREMENT) {
-            setRequestedStreamProperties([...parameters]);
+            setActiveStreamProperties([...parameters]);
         }
     };
 
@@ -108,11 +144,12 @@ const PolarFeature = (props = {}) => {
         visualizer.reset();
     };
 
+
     return html`
         <div>
             <form onSubmit=${submitHandler}>
                 <fieldset>
-                    <legend>${MEASUREMENT_NAME[featureCode]}</legend>
+                    <legend>${MEASUREMENT_NAME[code]}</legend>
                     ${parameters.map(({name, values, code, unit}) => html`
                         <label>
                             <span class="label-text">${name}</span>
@@ -126,6 +163,7 @@ const PolarFeature = (props = {}) => {
                     <button name="operation" type="submit" value=${OP_CODE.START_MEASUREMENT}>start</button>
                     <button name="operation" type="submit" value=${OP_CODE.STOP_MEASUREMENT}>stop</button>
                     <!-- visualizer -->
+                    <div ref=${visualizerContainer}></div>
                     <button onClick=${resetHandler}>reset</button>
                     <button onClick=${setNormalizeFactor(1 / absoluteMax(min, max))}>normalize</button>
                     <label class=${min * normalizeFactor < -1 ? "clip" : null}>

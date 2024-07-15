@@ -1,11 +1,8 @@
 import {signal} from "@preact/signals";
-import {useEffect, useState, useMemo, useContext} from "preact/hooks";
+import {useEffect, useMemo} from "preact/hooks";
 import {html} from "htm/preact";
 
-import {AppHandlersContext} from "hardbeet";
 import {GATT_SERVICE_UUID} from "../GATT_constants.js";
-import {CHARACTERISTIC_UUID} from "../characteristics_and_object_types.js";
-import {findByUUID} from "../functions.js";
 
 import {Characteristics} from "../characteristic/characteristics.js";
 
@@ -47,13 +44,16 @@ const HeartRateService = (props = {}) => {
     const {state = {}, getHandlers} = props;
     const handlers = useMemo(() => getHandlers(state));
     const {object: service, characteristics = {value: []}, heartRate, rrIntervals, contactDetected, energyExpended, sensorLocation} = state;
-    const {addCharacteristics, setHeartRate, setRRIntervals, setContactDetected, setEnergyExpended, setSensorLocation} = handlers;
-
-    const {log: {logError}} = useContext(AppHandlersContext);
-    const [heartRateCharacteristic, setHeartRateCharacteristic] = useState(null);
-    const [sensorLocationCharacteristic, setSensorLocationCharacteristic] = useState(null);
+    const {addCharacteristics} = handlers;
 
     useEffect(() => {
+        /*  characteristics:
+                required:
+                    heart_rate_measurement
+                optional:
+                    heart_rate_control_point
+                    body_sensor_location
+        */
         service.getCharacteristics()
             .then(addCharacteristics);
     }, []);

@@ -1,9 +1,11 @@
-import {signal} from "@preact/signals";
+import {getState as getFeaturesState} from "./feature/state.js";
+
 
 const getState = (initialValues = {}) => {
     const {features = []} = initialValues;
+
     return {
-        features: signal([])
+        features: getFeaturesState(features)
     };
 };
 

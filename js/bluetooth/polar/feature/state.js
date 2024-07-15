@@ -3,24 +3,27 @@ import {signal} from "@preact/signals";
 import {DEFAULT} from "./defaults.js";
 
 
-const getFeatureInitialState = (initialValues = {}) => {
+const getInitialFeatureState = (initialValues = {}) => {
     const {
-        status = DEFAULT.STATUS
+        code,
+        status = DEFAULT.STATUS,
+        parameters = [],
+        data = {}
     } = initialValues;
-    /*
-    code: 0, 1, 2, 3, 5, 6
-    supported: true
-    parameters: {},
-    */
 
     return {
-        status: signal(status)
+        code,
+        status: signal(status),
+        parameters,
+        activeStreamProperties: signal([]),
+        data: signal(data)
     };
 };
 
-const getState = (initialValues = []) => signal(initialValues.map(getFeatureInitialState));
+const getState = () => signal({});
 
 
 export {
-    getState
+    getState,
+    getInitialFeatureState
 };

@@ -40,7 +40,7 @@ const BatteryService = (props = {}) => {
 
     useLayoutEffect(() => {
         if (batteryLevel.value !== null) {
-            console.log("send batteryLevel to wherever needed: " + batteryLevel.value);
+            //console.log("send batteryLevel to wherever needed: " + batteryLevel.value);
         }
     }, [batteryLevel.value]);
 

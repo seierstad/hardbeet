@@ -10,7 +10,7 @@ import {
     ACC_FRAMETYPE,
     ECG_FRAMETYPE,
     CONTROL_POINT_RESPONSE_TYPE
-} from "../constants.js";
+} from "./constants.js";
 
 
 const parseFeatureReadResponse = data => {

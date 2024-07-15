@@ -1,5 +1,4 @@
-import {useEffect, useMemo, useState} from "preact/hooks";
-import {signal} from "@preact/signals";
+import {useEffect} from "preact/hooks";
 import {html} from "htm/preact";
 
 import {Characteristic} from "./characteristic.js";
@@ -24,10 +23,8 @@ const parseSensorLocation = sensorLocationData => sensorLocationData.getUint8(0)
 
 const BodySensorLocationCharacteristic = (props = {}) => {
     const {state = {}, handlers, serviceHandlers} = props;
-    const {object: characteristic, features} = state;
+    const {object: characteristic} = state;
     const {setSensorLocation} = serviceHandlers;
-    const logError = (e) => console.error(e);
-
 
     const sensorLocationChangeHandler = (event) => {
         const parsed = parseSensorLocation(event.target.value);
