@@ -1,113 +1,189 @@
 class Visualizer {
     constructor () {
-        this.index = 0;
+        this._configured = false;
         this.rootElement = document.createElement("div");
         this.canvas = document.createElement("canvas");
         this.canvas.classList.add("visualizer");
-        this.ctx = this.canvas.getContext("2d");
         this.rootElement.appendChild(this.canvas);
+        this.ctx = this.canvas.getContext("2d", {willReadFrequently: true});
 
         this.drawWaveform = this.drawWaveform.bind(this);
         this.addToBuffer = this.addToBuffer.bind(this);
 
+        this.dpr = 1;
+
+
         this.buffer = [];
         this.animationFrameRequest = null;
-        this.previousValue = null;
-        this.pixelsPrSample = 3;
+    }
 
+    configure (config = {}) {
+        const {
+            zeroLineStyle = "lightgrey",
+            plotStyle = ["black", "red", "blue", "green"],
+            lineWidth = [3],
+            pixelsPrSample = 3,
+            channels = 1,
+            type: {
+                name = ""
+            } = {}
+        } = config;
 
+        this.name = name;
+        this.zeroLineStyle = zeroLineStyle;
+        this.plotStyle = plotStyle;
+        this.lineWidth = lineWidth;
+        this.channelCount = channels;
+        this.previousY = new Array(channels);
+        this.min = new Array(channels).fill(Number.MAX_VALUE);
+        this.max = new Array(channels).fill(Number.MIN_VALUE);
+        this.dashOffset = 0;
+        this.pixelsPrSample = pixelsPrSample;
+        this._configured = true;
+    }
+
+    get configured () {
+        return !!this._configured;
+    }
+
+    getScaledY (value, lineWidth = 1) {
+        const pixelHeight = ((-value + 1) / 2) * (this.canvas.height - lineWidth);
+        return value > 0 ? Math.floor(pixelHeight) : Math.ceil(pixelHeight);
+    }
+
+    horisontalLine (value = 0, start = 0, end = this.canvas.width, lineWidth = 1, strokeStyle = this.plotStyle, lineDash = null) {
+        const y = this.getScaledY(value);
+        this.ctx.strokeStyle = strokeStyle;
+        this.ctx.lineWidth = lineWidth;
+        if (lineDash !== null) {
+            this.ctx.setLineDash(lineDash);
+        }
+        this.ctx.beginPath();
+        this.ctx.moveTo(start, y);
+        this.ctx.lineTo(end, y);
+        this.ctx.stroke();
+        if (lineDash !== null) {
+            this.ctx.setLineDash([]);
+        }
+    }
+
+    zeroLine (start = 0, end = this.canvas.width) {
+        this.horisontalLine(0, start, end, 1, this.zeroLineStyle);
     }
 
     reset () {
-        this.index = 0;
-        this.ctx.clearRect(0, 0, this.canvas.clientWidth, this.canvas.clientHeight);
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.zeroLine();
+        this.dashOffset = this.canvas.width;
+
+        if (this.previousY) {
+            this.previousY = this.previousY.fill(this.zeroY);
+        }
+        if (this.min) {
+            this.min.fill(Number.MAX_VALUE);
+        }
+        if (this.max) {
+            this.max.fill(Number.MIN_VALUE);
+        }
     }
 
+    initializeResolution () {
+        // Get the DPR and size of the canvas
+        this.dpr = window.devicePixelRatio;
+        const rect = this.canvas.getBoundingClientRect();
+
+        // Set the "actual" size of the canvas
+        this.canvas.width = rect.width * this.dpr;
+        this.canvas.height = rect.height * this.dpr;
+
+        // Set the "drawn" size of the canvas
+        this.canvas.style.width = `${rect.width}px`;
+        this.canvas.style.height = `${rect.height}px`;
+        this.dashOffset = this.canvas.width;
+    }
+
+
     drawWaveform () {
-        if (!this.canvas.height || !this.canvas.width) {
-            this.canvas.width = this.canvas.clientWidth * 4;
-            this.canvas.height = this.canvas.clientHeight;
-        }
-
+        const drawData = [...this.buffer];
+        this.buffer = [];
         const ctx = this.ctx;
-        ctx.strokeStyle = "black";
-        const width = this.canvas.clientWidth;
-        const height = this.canvas.clientHeight;
-        ctx.clearRect(this.index, 0, this.buffer.length * this.pixelsPrSample, height);
-        const clearStart = this.index + this.buffer.length * this.pixelsPrSample - width;
-        if (clearStart > 0) {
-            ctx.clearRect(0, 0, clearStart, height);
-        }
-        //const channelCount = this.buffer[0].length;
-        /*
-        const heightPrChannel = this.canvas.clientHeight / channelCount;
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+        const zeroHeight = this.getScaledY(0);
 
+        const addedWidth = drawData.length * this.pixelsPrSample;
+        const keepWidth = width - addedWidth;
+        const keepPixels = ctx.getImageData(addedWidth, 0, keepWidth, height);
+        ctx.putImageData(keepPixels, 0, 0);
+        ctx.clearRect(keepWidth, 0, addedWidth, height);
 
-        for (let c = 0; c < channelCount; c += 1) {
-            const channelData = buffer.getChannelData(c);
-            const channelScaler = this.getChannelScaler(c * heightPrChannel, (c + 1) * heightPrChannel);
-            const integers = Math.floor(this.offsetX) === this.offsetX;
+        // zero line
+        this.zeroLine(keepWidth - this.pixelsPrSample);
 
-            if (samplesPrPixel <= 1) {
-                // draw lines
-                ctx.beginPath();
-                ctx.moveTo(0, channelScaler(this.transformY(channelData[Math.floor(this.offsetX)])));
-                for (let i = 1; i < width; i += 1) {
-                    ctx.lineTo(i, channelScaler(this.transformY(channelData[Math.floor(this.offsetX + (i * samplesPrPixel))])));
+        for (let c = 0; c < this.channelCount; c += 1) {
+            this.previousY[c] = (this.previousY[c] === null) ? zeroHeight : this.previousY[c];
+            const {[c]: lineWidth = this.lineWidth[0]} = this.lineWidth;
+            const {[c]: strokeStyle = this.plotStyle[0]} = this.plotStyle;
+
+            ctx.beginPath();
+            ctx.strokeStyle = strokeStyle;
+            ctx.lineWidth = lineWidth;
+            ctx.moveTo(keepWidth - this.pixelsPrSample, this.previousY[c]);
+
+            // plot line
+            for (let i = 0; i < drawData.length; i += 1) {
+                const value = drawData[i][c];
+                const y = this.getScaledY(value);
+                ctx.lineTo(keepWidth + (i * this.pixelsPrSample), y);
+                this.previousY[c] = y;
+            }
+            ctx.stroke();
+
+            // min and max lines:
+            for (let i = 0; i < drawData.length; i += 1) {
+
+                const value = drawData[i][c];
+
+                ctx.lineDashOffset = this.dashOffset + i * this.pixelsPrSample;
+                if (value < this.min[c]) {
+                    this.min[c] = value;
+                } else {
+                    this.horisontalLine(
+                        this.min[c],
+                        keepWidth + ((i - 1) * this.pixelsPrSample),
+                        keepWidth + (i * this.pixelsPrSample),
+                        1,
+                        strokeStyle,
+                        [this.pixelsPrSample, this.pixelsPrSample * 3]
+                    );
                 }
-                ctx.stroke();          // Render the path
-            } else {
-                // draw boxes
-                for (let i = 0; i < width; i += 1) {
-                    const sampleStart = Math.floor(this.offsetX + i * samplesPrPixel);
-                    const sampleEnd = Math.ceil(sampleStart + samplesPrPixel);
-                    const pixel = channelData.subarray(sampleStart, sampleEnd).reduce(this.minMaxReducer, {min: channelData[sampleStart], max: channelData[sampleStart]});
 
-                    ctx.fillRect(i, channelScaler(this.transformY(pixel.min)), 1, this.transformY((pixel.max - pixel.min) * heightPrChannel / 2));
+                if (value > this.max[c]) {
+                    this.max[c] = value;
+                } else {
+                    this.horisontalLine(
+                        this.max[c],
+                        keepWidth + ((i - 1) * this.pixelsPrSample),
+                        keepWidth + (i * this.pixelsPrSample),
+                        1,
+                        strokeStyle,
+                        [this.pixelsPrSample, this.pixelsPrSample * 3]
+                    );
                 }
+
             }
         }
-        */
-        ctx.beginPath();
-        this.previousValue = this.previousValue || height / 2;
-        ctx.moveTo(this.index, this.previousValue);
 
-        const scale = (value) => value * height + (height / 2);
-
-        while (this.buffer.length > 0) {
-            const y = this.buffer.shift();
-
-            if (this.index + this.pixelsPrSample >= width) {
-                ctx.stroke();
-                this.index = 0;
-                ctx.beginPath();
-                ctx.moveTo(this.index, this.previousValue);
-            }
-            ctx.lineTo(this.index + this.pixelsPrSample, scale(y[0]));
-            this.previousValue = scale(y[0]);
-            this.index += this.pixelsPrSample;
-        }
-        ctx.stroke();
-
-        /* zero line */
-        ctx.strokeStyle = "red";
-        ctx.beginPath();
-        ctx.moveTo(0, height / 2);
-        ctx.lineTo(width, height / 2);
-        ctx.stroke();
-        /* end zero line */
-
+        this.dashOffset += addedWidth;
         this.animationFrameRequest = null;
     }
 
     addToBuffer (data) {
-        if (this.previousValue === null) {
-            this.previousValue = data;
-        }
-        if (this.buffer.length === 0) {
+        this.buffer.push(data);
+
+        if (this.animationFrameRequest === null) {
             this.animationFrameRequest = window.requestAnimationFrame(this.drawWaveform);
         }
-        this.buffer.push(data);
     }
 
     appendData (data, parameters) {
