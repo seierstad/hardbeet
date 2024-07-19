@@ -15,7 +15,8 @@ const LogEntry = props => {
         text = "",
         timestamp,
         level,
-        type = null
+        type = null,
+        data = []
     } = props;
 
     return html`
@@ -24,6 +25,7 @@ const LogEntry = props => {
                 ${constantWidthTimeText(timestamp)}
             </time>
             ${(type === "code") ? html`<code>${text}</code>` : html`<span>${text}</span>`}
+            ${(type === "hex" && data.length !== 0) && html`<code class="data hex">${data.map(v => Number(v).toString(16).padStart(2, "0")).join(", ")}</code>`}
         </li>
     `;
 };
