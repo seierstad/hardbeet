@@ -25,6 +25,9 @@ const getFeatureHandlers = (features = {}, feature) => {
 
     return {
         setActiveStreamProperties: properties => state.activeStreamProperties.value = properties,
+        startZeroSampling: () => state.sampleZero.value = true,
+        stopZeroSampling: () => state.sampleZero.value = false,
+        setOffsets: (offsets) => state.offsets.value = offsets,
         ...getFeatureSpecificHandlers(state)
     };
 };

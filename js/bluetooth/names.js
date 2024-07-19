@@ -1,24 +1,12 @@
-import {GATT_DESCRIPTOR_NAME, GATT_SERVICE_NAME, POLAR_NAMES} from "./GATT_constants.js";
+import {GATT_DESCRIPTOR_NAME, GATT_SERVICE_NAME, POLAR_NAMES, CHARACTERISTIC_OR_OBJECT_TYPE} from "./GATT_constants.js";
+import {lookupUUID} from "./functions.js";
+
 
 const lookupNameFromUUID = (uuid, dictionaries) => {
-    let name = null;
+    const lookup = lookupUUID(uuid);
+    const dictionary = dictionaries.find(({[lookup]: match = null}) => match !== null);
 
-    dictionaries.forEach(d => {
-        if (d.hasOwnProperty(uuid)) {
-            name = d[uuid];
-        }
-    });
-
-    if (name === null && typeof uuid === "string" && uuid.length === 36) {
-        const shortID = parseInt(uuid.substring(4, 8), 16);
-        dictionaries.forEach(d => {
-            if (d.hasOwnProperty(shortID)) {
-                name = d[shortID];
-            }
-        });
-    }
-
-    return name || uuid.toString();
+    return dictionary ? dictionary[lookup] : lookup.toString();
 };
 
 const getDescriptorName = uuid => lookupNameFromUUID(uuid, [GATT_DESCRIPTOR_NAME]);

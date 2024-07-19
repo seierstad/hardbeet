@@ -7,14 +7,18 @@ const getInitialFeatureState = (initialValues = {}) => {
     const {
         code,
         status = DEFAULT.STATUS,
+        sampleZero = DEFAULT.SAMPLE_ZERO,
         parameters = [],
-        data = {}
+        offsets = [],
+        data = null
     } = initialValues;
 
     return {
         code,
         status: signal(status),
+        sampleZero: signal(sampleZero),
         parameters,
+        offsets: signal(offsets),
         activeStreamProperties: signal([]),
         data: signal(data)
     };

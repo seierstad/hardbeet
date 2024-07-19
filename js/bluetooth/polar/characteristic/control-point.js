@@ -10,28 +10,27 @@ import {parseFeatureReadResponse, parseControlPointResponse} from "../parsers.js
 
 import {
     POLAR_CHARACTERISTICS,
-    MEASUREMENT_TYPE,
     MEASUREMENT_NAME,
-    CONTROL_POINT_REQUEST,
     OP_CODE,
-    SETTING_LENGTH,
     CONTROL_POINT_RESPONSE_TYPE
 } from "../constants.js";
 
 
-const getState = (initialValues = {}) => {
+const getState = () => {
     return {
         polarControlPointSpecific: signal(null)
     };
 };
 
-const getHandlers = (state = getState()) => {
+const getHandlers = () => {
     return {};
 };
 
 
+const getSettingsRequest = featureCode => Uint8Array.of(OP_CODE.GET_MEASUREMENT_SETTINGS, featureCode);
+
 const PolarControlPointCharacteristic = (props = {}) => {
-    const {state = {}, handlers, serviceHandlers, features} = props;
+    const {state = {}, handlers, serviceHandlers} = props;
     const {object: characteristic} = state;
     const {addFeature, startMeasurement, stopMeasurement} = serviceHandlers;
     const {log: {log, logError} = {}} = useContext(AppHandlersContext);
@@ -39,10 +38,6 @@ const PolarControlPointCharacteristic = (props = {}) => {
     const [featureSupport, setFeatureSupport] = useState(null);
     const [parameterRequest, setParameterRequest] = useState(null);
 
-
-    const handleControlPointError = (error) => {
-        logError(`Polar control point error: ${error}`);
-    };
 
     const getNextFeatureCode = () => {
         if (featureSupport !== null) {
@@ -96,7 +91,7 @@ const PolarControlPointCharacteristic = (props = {}) => {
 
                     }
                 } else {
-                    logError(`measurement ${measurementCode}: error during operation ${opName}: ${status}`);
+                    logError(`measurement ${measurementCode}: error during operation ${opName}: ${status.message} (${status.code})`);
                 }
                 break;
 
@@ -112,7 +107,6 @@ const PolarControlPointCharacteristic = (props = {}) => {
             const {
                 properties: {
                     read,
-                    write,
                     notify,
                     indicate
                 } = {}
@@ -132,35 +126,11 @@ const PolarControlPointCharacteristic = (props = {}) => {
 
     useEffect(() => {
         if (parameterRequest !== null) {
-            let request = null;
             log(`initializing measurement: ${MEASUREMENT_NAME[parameterRequest]}`);
+            const request = getSettingsRequest(parameterRequest);
 
-            switch (parameterRequest) {
-
-                case MEASUREMENT_TYPE.ECG:
-                    request = CONTROL_POINT_REQUEST.GET_ECG_STREAM_SETTINGS;
-                    break;
-                case MEASUREMENT_TYPE.PPG:
-                    request = CONTROL_POINT_REQUEST.GET_PPG_STREAM_SETTINGS;
-                    break;
-                case MEASUREMENT_TYPE.ACCELERATION:
-                    request = CONTROL_POINT_REQUEST.GET_ACC_STREAM_SETTINGS;
-                    break;
-                case MEASUREMENT_TYPE.PP_INTERVAL:
-                    request = CONTROL_POINT_REQUEST.GET_PPI_STREAM_SETTINGS;
-                    break;
-                case MEASUREMENT_TYPE.GYROSCOPE:
-                    request = CONTROL_POINT_REQUEST.GET_GYRO_STREAM_SETTINGS;
-                    break;
-                case MEASUREMENT_TYPE.MAGNETOMETER:
-                    request = CONTROL_POINT_REQUEST.GET_MAG_STREAM_SETTINGS;
-                    break;
-            }
-
-            if (request !== null) {
-                characteristic.writeValue(request)
-                    .then(() => setParameterRequest(getNextFeatureCode()));
-            }
+            characteristic.writeValue(request)
+                .then(() => setParameterRequest(getNextFeatureCode()));
         }
     }, [parameterRequest]);
 

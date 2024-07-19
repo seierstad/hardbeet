@@ -1,10 +1,12 @@
 import {
-    POLAR_ERROR_CODES,
+    POLAR_RESPONSE_CODES,
     MEASUREMENT_TYPE,
     MEASUREMENT_NAME,
     SETTING_TYPE,
     SETTING_TYPE_NAME,
-    PMD_FLAG,
+    SETTING_TYPE_LENGTH,
+    PMD_FLAG_BYTE1,
+    PMD_FLAG_BYTE2,
     OP_CODE,
     SETTING_VALUES,
     ACC_FRAMETYPE,
@@ -15,26 +17,62 @@ import {
 
 const parseFeatureReadResponse = data => {
 
-    const flags = data.getUint8(1);
+    const flags1 = data.getUint8(1);
+    const flags2 = data.getUint8(2);
     const result = [{
         code: MEASUREMENT_TYPE.ECG,
-        supported: !!(flags & PMD_FLAG.ECG_SUPPORTED)
+        supported: !!(flags1 & PMD_FLAG_BYTE1.ECG_SUPPORTED)
     }, {
         code: MEASUREMENT_TYPE.PPG,
-        supported: !!(flags & PMD_FLAG.PPG_SUPPORTED)
+        supported: !!(flags1 & PMD_FLAG_BYTE1.PPG_SUPPORTED)
     }, {
         code: MEASUREMENT_TYPE.ACCELERATION,
-        supported: !!(flags & PMD_FLAG.ACC_SUPPORTED)
+        supported: !!(flags1 & PMD_FLAG_BYTE1.ACC_SUPPORTED)
     }, {
         code: MEASUREMENT_TYPE.PP_INTERVAL,
-        supported: !!(flags & PMD_FLAG.PPI_SUPPORTED)
+        supported: !!(flags1 & PMD_FLAG_BYTE1.PPI_SUPPORTED)
     }, {
         code: MEASUREMENT_TYPE.GYROSCOPE,
-        supported: !!(flags & PMD_FLAG.GYRO_SUPPORTED)
+        supported: !!(flags1 & PMD_FLAG_BYTE1.GYRO_SUPPORTED)
     }, {
         code: MEASUREMENT_TYPE.MAGNETOMETER,
-        supported: !!(flags & PMD_FLAG.MAG_SUPPORTED)
+        supported: !!(flags1 & PMD_FLAG_BYTE1.MAG_SUPPORTED)
+    }, {
+        code: MEASUREMENT_TYPE.SDK_MODE,
+        supported: !!(flags2 & PMD_FLAG_BYTE2.SDK_MODE_SUPPORTED)
+    }, {
+        code: MEASUREMENT_TYPE.LOCATION,
+        supported: !!(flags2 & PMD_FLAG_BYTE2.LOCATION_SUPPORTED)
+    }, {
+        code: MEASUREMENT_TYPE.PRESSURE,
+        supported: !!(flags2 & PMD_FLAG_BYTE2.PRESSURE_SUPPORTED)
+    }, {
+        code: MEASUREMENT_TYPE.TEMPERATURE,
+        supported: !!(flags2 & PMD_FLAG_BYTE2.TEMPERATURE_SUPPORTED)
+    }, {
+        code: MEASUREMENT_TYPE.OFFLINE_RECORDING,
+        supported: !!(flags2 & PMD_FLAG_BYTE2.OFFLINE_RECORDING_SUPPORTED)
+    }, {
+        code: MEASUREMENT_TYPE.OFFLINE_HR,
+        supported: !!(flags2 & PMD_FLAG_BYTE2.OFFLINE_HR_SUPPORTED)
     }];
+
+
+    /* just a test if there are bits set with no matching flags...
+    const allFlags = (acc, curr) => acc | curr;
+    const allByte1Flags = Object.values(PMD_FLAG_BYTE1).reduce(allFlags);
+    const allByte2Flags = Object.values(PMD_FLAG_BYTE2).reduce(allFlags);
+    const byte1Rest = flags1 & (allByte1Flags ^ 0xff);
+    const byte2Rest = flags2 & (allByte2Flags ^ 0xff);
+
+
+    if (byte1Rest !== 0) {
+        console.log(`flere byte 1-flagg: ${Number(byte1Rest).toString(2)}`);
+    }
+    if (byte2Rest !== 0) {
+        console.log(`flere byte 2-flagg: ${Number(byte2Rest).toString(2)}`);
+    }
+    */
 
     return result;
 };
@@ -42,37 +80,31 @@ const parseFeatureReadResponse = data => {
 
 const parseControlPointResponse = data => {
 
-    let i = 0;
     const result = {};
-    const datatype = data.getUint8(i);
-    i += 1;
+    const datatype = data.getUint8(0);
 
     if (datatype !== CONTROL_POINT_RESPONSE_TYPE.MEASUREMENT_CONTROL) {
         return result;
     }
 
-    const op_code = data.getUint8(i);
-    i += 1;
-    const measurementCode = data.getUint8(i);
-    i += 1;
+    const op_code = data.getUint8(1);
+    const measurementCode = data.getUint8(2);
 
     result.measurement = {
         code: measurementCode,
         name: MEASUREMENT_NAME[measurementCode]
     };
 
-    const statusCode = data.getUint8(i);
-    i += 1;
+    const statusCode = data.getUint8(3);
 
     result.status = {
         code: statusCode,
-        message: POLAR_ERROR_CODES[statusCode]
+        message: POLAR_RESPONSE_CODES[statusCode]
     };
-    result.error = (POLAR_ERROR_CODES[statusCode] !== "SUCCESS");
+    result.error = (POLAR_RESPONSE_CODES[statusCode] !== "SUCCESS");
 
 
-    const moreFrames = data.getUint8(i);
-    i += 1;
+    const moreFrames = data.byteLength > 4 && data.getUint8(4);
 
     if (moreFrames) {
         result.moreFrames = moreFrames;
@@ -91,7 +123,8 @@ const parseControlPointResponse = data => {
                 name: "startStream",
                 code: op_code
             };
-            if (i >= data.byteLength - 1) {
+            if (data.byteLength > 5) {
+                console.log("more bytes: ", [...new Uint8Array(data.buffer, 5)]);
                 return result;
             }
             break;
@@ -101,14 +134,27 @@ const parseControlPointResponse = data => {
                 name: "stopStream",
                 code: op_code
             };
+            if (data.byteLength > 5) {
+                console.log("more bytes: ", [...new Uint8Array(data.buffer, 5)]);
+            }
             return result;
+
+        case OP_CODE.GET_MEASUREMENT_STATUS:
+            result.operation = {
+                name: "getStatus",
+                code: op_code
+            };
+            return result;
+
+        default:
+            throw new Error(`unknown operation: 0x${Number(op_code).toString(16).padStart(2, "0")}`);
     }
 
 
     const parameters = [];
     result.parameters = parameters;
 
-
+    let i = 5;
     while (i < data.byteLength) {
         const parameterCode = data.getUint8(i);
         i += 1;
@@ -136,16 +182,24 @@ const parseControlPointResponse = data => {
                 break;
 
             default:
-                // "unknown parameter"
-                break;
-
+                throw new Error(`unknown parameter: ${Number(parameterCode).toString(16).padStart(2, "0")}`);
         }
-        parameters.push(parameter);
-        const length = data.getUint8(i);
-        i += 1;
 
-        for (let j = i + length * 2; i < j; i += 2) {
-            const value = [data.getUint16(i, true)];
+        parameters.push(parameter);
+        const valueCount = data.getUint8(i);
+        i += 1;
+        const valueLength = SETTING_TYPE_LENGTH[parameterCode];
+
+        for (let j = i + valueCount * valueLength; i < j; i += valueLength) {
+            let value;
+            switch (valueLength) {
+                case 1:
+                    value = [data.getUint8(i)];
+                    break;
+                case 2:
+                    value = [data.getUint16(i, true)];
+                    break;
+            }
             const label = SETTING_VALUES[parameterCode][value];
             parameter.values.push({label, value});
         }
@@ -211,10 +265,11 @@ const parseECGData = (data, settings = {}) => {
 const parsePPGData = (data, settings) => ({data, settings});
 
 
+const totalMagnitudeAdder = values => [Math.sqrt(values.reduce((acc, curr) => acc + curr * curr, 0)), ...values];
+
 const parseAccelerationData = (data, settings = {}) => {
     const {
-        channels = 3,
-        resolution = 16
+        channels = 4
     } = settings;
 
     let i = 0;
@@ -232,7 +287,7 @@ const parseAccelerationData = (data, settings = {}) => {
                 accumulatedValues[1] = data.getInt8(i + 1, true) / 128;
                 accumulatedValues[2] = data.getInt8(i + 2, true) / 128;
                 i += 3;
-                result.push([...accumulatedValues]);
+                result.push([...totalMagnitudeAdder(accumulatedValues)]);
             }
             break;
 
@@ -241,7 +296,7 @@ const parseAccelerationData = (data, settings = {}) => {
                 accumulatedValues[0] = data.getInt16(i, true) / (1 << 15);
                 accumulatedValues[1] = data.getInt16(i + 2, true) / (1 << 15);
                 accumulatedValues[2] = data.getInt16(i + 4, true) / (1 << 15);
-                result.push([...accumulatedValues]);
+                result.push([...totalMagnitudeAdder(accumulatedValues)]);
             }
             break;
 
@@ -251,7 +306,7 @@ const parseAccelerationData = (data, settings = {}) => {
                 accumulatedValues[1] = data.getInt32(i + 3, true) >> 8;
                 // TODO: possibly off by one
                 accumulatedValues[2] = data.getInt32(i + 6, true) >> 8;
-                result.push([...accumulatedValues]);
+                result.push([...totalMagnitudeAdder(accumulatedValues)]);
             }
             break;
 
@@ -261,9 +316,9 @@ const parseAccelerationData = (data, settings = {}) => {
             i += 1;
             metadata.deltaSampleCount = data.getUint8(i, true);
             i += 1;
-            metadata.deltaSampleBytes = Math.ceil(deltaResolutionPrChannel * channels / 8);
+            metadata.deltaSampleBytes = Math.ceil(metadata.deltaResolutionPrChannel * channels / 8);
 
-            result.push([...accumulatedValues]);
+            result.push([...totalMagnitudeAdder(accumulatedValues)]);
             break;
 
         default:

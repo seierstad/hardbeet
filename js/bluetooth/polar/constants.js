@@ -5,6 +5,7 @@ const PFC_SERVICE = "6217ff4b-fb31-1140-ad5a-a45545d7ecf3";
 const POLAR_UUID1 = 0xFEEE;
 const POLAR_UUID2 = 0xFEFE;
 
+
 const POLAR_MANUFACTURER_IDS = [0x006B, 0x00D1];
 
 
@@ -32,7 +33,7 @@ const POLAR_NAMES = {
     [POLAR_CHARACTERISTICS.UNDOCUMENTED_5]: "Polar undocumented characteristic 5"
 };
 
-const POLAR_ERROR_CODES = {
+const POLAR_RESPONSE_CODES = {
     0: "SUCCESS", // Response when sent Control Point Command is handled with success.
     1: "ERROR INVALID OP CODE", // Response when sent Control Point Command is not supported by device.
     2: "ERROR INVALID MEASUREMENT TYPE", // Response when requested measurement is not known by the device.
@@ -46,14 +47,29 @@ const POLAR_ERROR_CODES = {
     10: "ERROR INVALID MTU", // Response when connection MTU is not matching the device required MTU.
     11: "ERROR INVALID NUMBER OF CHANNELS", // Response when measurement request contains invalid number of channels.
     12: "ERROR INVALID STATE", // Response when device in invalid state.
-    13: "ERROR DEVICE IN CHARGER" // Response when device is in charger and doesn't support requested command in the current state.
+    13: "ERROR DEVICE IN CHARGER", // Response when device is in charger and doesn't support requested command in the current state.
+    14: "ERROR DISK FULL"
     //     14 - 255 "RFU" // Reserved for Future Usage.
 };
 
 const OP_CODE = {
+    NULL_ITEM: 0x00,
     GET_MEASUREMENT_SETTINGS: 0x01,
     START_MEASUREMENT: 0x02,
-    STOP_MEASUREMENT: 0x03
+    STOP_MEASUREMENT: 0x03,
+    GET_SDK_MODE_MEASUREMENT_SETTINGS: 0x04,
+    GET_MEASUREMENT_STATUS: 0x05,
+    GET_SDK_MODE_STATUS: 0x06,
+    GET_OFFLINE_RECORDING_TRIGGER_STATUS: 0x07,
+    SET_OFFLINE_RECORDING_TRIGGER_MODE: 0x08,
+    SET_OFFLINE_RECORDING_TRIGGER_SETTINGS: 0x09
+};
+
+const MEASUREMENT_STATUS = {
+    NO_ACTIVE_MEASUREMENT: 0x00,
+    ONLINE_MEASUREMENT_ACTIVE: 0x01,
+    OFFLINE_MEASUREMENT_ACTIVE: 0x02,
+    ONLINE_AND_OFFLINE_ACTIVE: 0x03
 };
 
 const CONTROL_POINT_RESPONSE_TYPE = {
@@ -67,53 +83,36 @@ const MEASUREMENT_TYPE = {
     "ACCELERATION": 0x02, // Force per unit mass (g)
     "PP_INTERVAL": 0x03, // Second (s)
     "GYROSCOPE": 0x05, // Degrees per second (dps)
-    "MAGNETOMETER": 0x06 // Gauss (G)
-    //4, 7-255 Reserved for Future Use
+    "MAGNETOMETER": 0x06, // Gauss (G)
+    "SDK_MODE": 0x09,
+    "LOCATION": 0x0a, // = 10u?
+    "PRESSURE": 0x0b, // = 11u?
+    "TEMPERATURE": 0x0c, // = 12u?
+    "OFFLINE_RECORDING": 0x0d, // =13u?
+    "OFFLINE_HR": 0x0e, // = 14u?
+    "OFFLINE_TEMP": 0x0f, // = 15u
+    "UNKNOWN_TYPE": 0x3f // = 0x3fu?
 };
 
-
 /* Polar v5.0.0:
-    ECG(0u),
-    PPG(1u),
-    ACC(2u),
-    PPI(3u),
-    GYRO(5u),
-    MAGNETOMETER(6u),
-    SDK_MODE(9u),
-    LOCATION(10u),
-    PRESSURE(11u),
-    TEMPERATURE(12u),
-    OFFLINE_RECORDING(13u),
-    OFFLINE_HR(14u),
-    OFFLINE_TEMP(15u),
-    UNKNOWN_TYPE(0x3fu);
 
-
-        fun fromByteArray(data: ByteArray): Set<PmdMeasurementType> {
-            val measurementTypes: MutableSet<PmdMeasurementType> = mutableSetOf()
-            if ((data[1].toUInt() and 0x01u) != 0u) measurementTypes.add(ECG)
-            if ((data[1].toUInt() and 0x02u) != 0u) measurementTypes.add(PPG)
-            if ((data[1].toUInt() and 0x04u) != 0u) measurementTypes.add(ACC)
-            if ((data[1].toUInt() and 0x08u) != 0u) measurementTypes.add(PPI)
-            if ((data[1].toUInt() and 0x20u) != 0u) measurementTypes.add(GYRO)
-            if ((data[1].toUInt() and 0x40u) != 0u) measurementTypes.add(MAGNETOMETER)
-            if ((data[2].toUInt() and 0x04u) != 0u) measurementTypes.add(LOCATION)
-            if ((data[2].toUInt() and 0x08u) != 0u) measurementTypes.add(PRESSURE)
-            if ((data[2].toUInt() and 0x10u) != 0u) measurementTypes.add(TEMPERATURE)
-            if ((data[2].toUInt() and 0x02u) != 0u) measurementTypes.add(SDK_MODE)
-            if ((data[2].toUInt() and 0x20u) != 0u) measurementTypes.add(OFFLINE_RECORDING)
-            if ((data[2].toUInt() and 0x40u) != 0u) measurementTypes.add(OFFLINE_HR)
-            return measurementTypes
-        }
-        */
+*/
 
 const MEASUREMENT_NAME = {
     0x00: "ecg",
     0x01: "ppg",
     0x02: "acceleration",
     0x03: "ppInterval",
-    0x04: "gyroscope",
-    0x05: "magnetometer"
+    0x05: "gyroscope",
+    0x06: "magnetometer",
+    0x09: "SDK mode",
+    0x0a: "location",
+    0x0b: "pressure",
+    0x0c: "temperature",
+    0x0d: "offline recording",
+    0x0e: "offline heart rate",
+    0x0f: "offline temperature",
+    0x3f: "unknown type"
 };
 
 const ACC_FRAMETYPE = {
@@ -133,12 +132,6 @@ const RESOLUTION = {
     0x0016: 22
 };
 
-const RESOLUTION_CODE = {
-    14: [0x0E, 0x00],
-    16: [0x10, 0x00],
-    22: [0x16, 0x00]
-};
-
 const SAMPLE_RATE = {
     0x0019:  25,
     0x0032:  50,
@@ -148,25 +141,10 @@ const SAMPLE_RATE = {
     0x00C8: 200
 };
 
-const SAMPLE_RATE_CODE = {
-    25: [0x19, 0x00],
-    50: [0x32, 0x00],
-    52: [0x34, 0x00],
-    100: [0x64, 0x00],
-    130: [0x82, 0x00],
-    200: [0xC8, 0x00]
-};
-
 const RANGE = {
     0x0002: 2,
     0x0004: 4,
     0x0008: 8
-};
-
-const RANGE_CODE = {
-    2: [0x02, 0x00],
-    4: [0x04, 0x00],
-    8: [0x08, 0x00]
 };
 
 const CHANNELS = {
@@ -177,7 +155,9 @@ const SETTING_TYPE = {
     SAMPLE_RATE: 0x00,
     RESOLUTION: 0x01,
     RANGE: 0x02,
-    CHANNELS: 0x04
+    CHANNELS: 0x04,
+    FACTOR: 0x05,
+    SECURITY: 0x06
 };
 
 
@@ -193,31 +173,38 @@ const SETTING_TYPE_NAME = {
     [SETTING_TYPE.RESOLUTION]: "resolution",
     [SETTING_TYPE.RANGE]: "range",
     [SETTING_TYPE.CHANNELS]: "channels",
-    0x05: "factor"
+    [SETTING_TYPE.FACTOR]: "factor",
+    [SETTING_TYPE.SECURITY]: "security"
+};
+
+// all multibyte values are little endian
+const SETTING_TYPE_LENGTH = {
+    [SETTING_TYPE.SAMPLE_RATE]: 2,
+    [SETTING_TYPE.RESOLUTION]: 2,
+    [SETTING_TYPE.RANGE]: 2,
+    [SETTING_TYPE.CHANNELS]: 1,
+    [SETTING_TYPE.FACTOR]: 4,
+    [SETTING_TYPE.SECURITY]: 16
 };
 
 const SETTING_LENGTH = 0x01;
 
-const CONTROL_POINT_REQUEST = {
-    GET_ECG_STREAM_SETTINGS: Uint8Array.of(OP_CODE.GET_MEASUREMENT_SETTINGS, MEASUREMENT_TYPE.ECG),
-    GET_PPG_STREAM_SETTINGS: Uint8Array.of(OP_CODE.GET_MEASUREMENT_SETTINGS, MEASUREMENT_TYPE.PPG),
-    GET_ACC_STREAM_SETTINGS: Uint8Array.of(OP_CODE.GET_MEASUREMENT_SETTINGS, MEASUREMENT_TYPE.ACCELERATION),
-    GET_PPI_STREAM_SETTINGS: Uint8Array.of(OP_CODE.GET_MEASUREMENT_SETTINGS, MEASUREMENT_TYPE.PPI),
-    GET_GYRO_STREAM_SETTINGS: Uint8Array.of(OP_CODE.GET_MEASUREMENT_SETTINGS, MEASUREMENT_TYPE.GYRO),
-    GET_MAG_STREAM_SETTINGS: Uint8Array.of(OP_CODE.GET_MEASUREMENT_SETTINGS, MEASUREMENT_TYPE.MAG),
-    ECG_START: Uint8Array.of(OP_CODE.START_MEASUREMENT, MEASUREMENT_TYPE.ECG, SETTING_TYPE.SAMPLE_RATE, SETTING_LENGTH, ...SAMPLE_RATE_CODE[130], SETTING_TYPE.RESOLUTION, SETTING_LENGTH, ...RESOLUTION_CODE[14]),
-    ECG_STOP: Uint8Array.of(OP_CODE.STOP_MEASUREMENT, MEASUREMENT_TYPE.ECG),
-    ACC_START: Uint8Array.of(OP_CODE.START_MEASUREMENT, MEASUREMENT_TYPE.ACCELERATION, SETTING_TYPE.RANGE, SETTING_LENGTH, ...RANGE_CODE[8], SETTING_TYPE.SAMPLE_RATE, SETTING_LENGTH, ...SAMPLE_RATE_CODE[200], SETTING_TYPE.RESOLUTION, SETTING_LENGTH, ...RESOLUTION_CODE[16]),
-    ACC_STOP: Uint8Array.of(OP_CODE.STOP_MEASUREMENT, MEASUREMENT_TYPE.ACCELERATION)
-};
-
-const PMD_FLAG = {
+const PMD_FLAG_BYTE1 = {
     ECG_SUPPORTED: 0x1,
     PPG_SUPPORTED: 0x2,
     ACC_SUPPORTED: 0x4,
     PPI_SUPPORTED: 0x8,
-    GYRO_SUPPORTED: 0x10,
-    MAG_SUPPORTED:  0x20
+    GYRO_SUPPORTED: 0x20,
+    MAG_SUPPORTED:  0x40
+};
+
+const PMD_FLAG_BYTE2 = {
+    SDK_MODE_SUPPORTED: 0x02,
+    LOCATION_SUPPORTED: 0x04,
+    PRESSURE_SUPPORTED: 0x08,
+    TEMPERATURE_SUPPORTED: 0x10,
+    OFFLINE_RECORDING_SUPPORTED: 0x20,
+    OFFLINE_HR_SUPPORTED: 0x40
 };
 
 
@@ -227,14 +214,16 @@ export {
     PFC_SERVICE,
     POLAR_UUID1,
     POLAR_UUID2,
-    POLAR_ERROR_CODES,
+    POLAR_RESPONSE_CODES,
     MEASUREMENT_TYPE,
     MEASUREMENT_NAME,
+    MEASUREMENT_STATUS,
     SETTING_TYPE,
     SETTING_TYPE_NAME,
+    SETTING_TYPE_LENGTH,
     SETTING_LENGTH,
-    CONTROL_POINT_REQUEST,
-    PMD_FLAG,
+    PMD_FLAG_BYTE1,
+    PMD_FLAG_BYTE2,
     POLAR_NAMES,
     OP_CODE,
     SETTING_VALUES,

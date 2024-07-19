@@ -1,6 +1,4 @@
-import {useEffect, useContext} from "preact/hooks";
-
-import {AppHandlersContext} from "hardbeet";
+import {useEffect} from "preact/hooks";
 
 import {POLAR_CHARACTERISTICS} from "../constants.js";
 
@@ -15,13 +13,8 @@ const getHandlers = () => {
 
 
 const PolarDataCharacteristic = (props = {}) => {
-    const {state = {}, handlers, serviceHandlers, features, dataParserFunction} = props;
-    const {log: {log} = {}} = useContext(AppHandlersContext);
+    const {state = {}, dataParserFunction} = props;
     const {object: characteristic} = state;
-
-    const handleDataCharacteristicError = (error) => {
-        logError(`Polar PMD Data characteristic error: ${error}`);
-    };
 
     const handleDataChanged = (event) => {
         dataParserFunction(event.target.value);

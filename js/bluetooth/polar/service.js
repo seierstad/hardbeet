@@ -10,7 +10,7 @@ import Service from "../service/service.js";
 import {PolarFeature} from "./feature/feature.js";
 import {parseMeasurementData} from "./parsers.js";
 
-import {POLAR_CHARACTERISTICS, POLAR_MEASUREMENT_DATA_SERVICE_UUID, OP_CODE, SETTING_LENGTH} from "./constants.js";
+import {POLAR_CHARACTERISTICS, POLAR_MEASUREMENT_DATA_SERVICE_UUID} from "./constants.js";
 import {getHandlers} from "./handlers.js";
 import {getState} from "./state.js";
 
@@ -26,7 +26,6 @@ const PolarService = (props = {}) => {
     const {addCharacteristics, setFeatureData} = handlers;
 
     const [controlPointCharacteristic, setControlPointCharacteristic] = useState(null);
-    const [dataCharacteristic, setDataCharacteristic] = useState(null);
 
     useEffect(() => {
         service.getCharacteristics().then(addCharacteristics)
@@ -37,17 +36,10 @@ const PolarService = (props = {}) => {
         const cs = characteristics.value;
         if (cs && cs.length > 0) {
             const controlPoint = cs.find(findByUUID(POLAR_CHARACTERISTICS.PMD_CONTROL_POINT));
-            const data = cs.find(findByUUID(POLAR_CHARACTERISTICS.PMD_DATA_MTU));
             if (controlPoint) {
                 setControlPointCharacteristic(controlPoint.object);
             } else {
                 setControlPointCharacteristic(null);
-            }
-
-            if (data) {
-                setDataCharacteristic(data.object);
-            } else {
-                setDataCharacteristic(null);
             }
         }
     }, [characteristics.value]);
@@ -55,7 +47,6 @@ const PolarService = (props = {}) => {
     const parseData = (data) => {
         const typeCode = data.getUint8(0);
         const settings = features.value[typeCode].activeStreamProperties.value;
-        //console.log({typeCode, settings, data});
         const parsed = parseMeasurementData(data, settings);
         setFeatureData(typeCode, parsed);
     };

@@ -60,7 +60,6 @@ const Bluetooth = () => {
             device => {
                 log(`got bt device ${device.id}`);
                 handlers.devices.addDevice(device);
-                //dispatch({type: ACTION.ADD_SENSOR, payload: {device, index: deviceCounter}});
             },
             error => {
                 logError("device request error: " + error);
@@ -88,7 +87,6 @@ const Bluetooth = () => {
 
     const addAnything = () => {
         navigator.bluetooth.requestDevice({
-            //filters: [BATTERY_SERVICE_UUID],
             acceptAllDevices: true,
             optionalServices: [...optionalServicesUUIDs, mainServiceUUID]
         }).then(
