@@ -51,10 +51,15 @@
 		display: block;
 	}
 }
-
-
-/*
+.visualizer-container {
+	min-width: 75vw;
+	height: calc(9 * 75vw / 16);
+}
 .visualizer {
 	width: 100%;
 }
-*/
+
+.clip {
+	background: red;
+	color: white;
+}
