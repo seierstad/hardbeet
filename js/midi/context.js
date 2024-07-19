@@ -31,7 +31,9 @@ const MidiAccessProvider = (props = {}) => {
             inputs.current.add(port);
         }
     };
-    const removeMidiInput = (inputId) => console.log(inputId);
+    const removeMidiInput = (inputId) => {
+        inputs.current.remove(inputId);
+    };
 
     const addMidiOutput = (port) => {
         if (access !== null) {
@@ -40,7 +42,9 @@ const MidiAccessProvider = (props = {}) => {
             outputs.current.add(port);
         }
     };
-    const removeMidiOutput = () => {};
+    const removeMidiOutput = (outputId) => {
+        outputs.current.remove(outputId);
+    };
 
     useLayoutEffect(() => {
         log("testing if MIDI is available");
